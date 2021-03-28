@@ -58,7 +58,7 @@ struct backcmd
 int fork1(void); // Fork but panics on failure.
 void panic(char *);
 struct cmd *parsecmd(char *);
-char *str_concat(char *, const char *);
+char *str_concat(char *dest, char *src);
 int str_split(char *str, char c, char ***arr);
 
 // Execute cmd.  Never returns.
@@ -87,18 +87,21 @@ void runcmd(struct cmd *cmd)
 
     //=====================// Q1 //=====================//
 
-    int fd, size, count = 0;
-    char *path_vars = (char *)malloc(256 * sizeof(char));
-    char **paths = 0;
-    fd = open("/path", O_RDONLY);
+    int fd = open("/path", O_RDONLY);
     if (fd >= 0)
     {
-      size = read(fd, path_vars, 256);
+      char *path_vars = (char *)malloc(4096 * sizeof(char));
+      // struct stat st;
+      // stat("/path", &st);
+      // size = st.st_size;
+      int size = read(fd, path_vars, 4096);
       close(fd);
       if (size >= 0)
       {
+        char **paths = 0;
         fprintf(2, "Path file: %s\n", path_vars);
-        count = str_split(path_vars, ':', &paths);
+        int count = str_split(path_vars, ':', &paths);
+        free(path_vars);
         for (int i = 0; i < count; i++)
         {
           fprintf(2, "Path entered: %s\n", str_concat(paths[i], ecmd->argv[0]));
@@ -534,41 +537,44 @@ nulterminate(struct cmd *cmd)
   return cmd;
 }
 
-char **str_split(char *string, const char delimiter) {
-    int length = 0, count = 0, i = 0, j = 0;
-    while(*(string++)) {
-        if (*string == delimiter) count++;
-        length++;
-    }
-    string -= (length + 1); // string was incremented one more than length
-    char **array = (char **)malloc(sizeof(char *) * (length + 1));
-    char ** base = array;
-    for(i = 0; i < (count + 1); i++) {
-        j = 0;
-        while(string[j] != delimiter) j++;
-        j++;
-        *array = (char *)malloc(sizeof(char) * j);
-        memcpy(*array, string, (j-1));
-        (*array)[j-1] = '\0';
-        string += j;
-        array++;
-    }
-    *array = '\0';
-    return base;  
+int str_split(char *string, const char delimiter, char ***array)
+{
+  int length = 0, count = 0, i = 0, j = 0;
+  while (*string)
+  {
+    if (*string == delimiter)
+      count++;
+    length++;
+    string++;
+  }
+  string -= length; // string was incremented one more than length
+  char **base = (char **)malloc(sizeof(char *) * (count + 1));
+  *array = base;
+  for (i = 0; i < count; i++)
+  {
+    j = 0;
+    while (string[j] != delimiter)
+      j++;
+    j++;
+    *base = (char *)malloc(sizeof(char) * j);
+    memcpy(*base, string, (j - 1));
+    (*base)[j - 1] = '\0';
+    string += j;
+    base++;
+  }
+  *base = '\0';
+  string -= length;
+  base -= count;
+
+  return count;
 }
 
-char* str_concat(char* destination, const char* source)
+char *str_concat(char *dest, char *src)
 {
-    // make ptr point to the end of destination string
-    char* ptr = destination + strlen(destination);
-
-    // Appends characters of source to the destination string
-    while (*source != '\0')
-        *ptr++ = *source++;
-
-    // null terminate destination string
-    *ptr = '\0';
-
-    // destination is returned by standard strcat()
-    return destination;
+  char *p = dest;
+  while (*p)
+    p++;
+  while ((*p++ = *src++) != '\0');
+  *p = '\0';
+  return dest;
 }
