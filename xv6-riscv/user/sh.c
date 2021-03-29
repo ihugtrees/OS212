@@ -13,6 +13,20 @@
 
 #define MAXARGS 10
 
+#define T_DIR 1    // Directory
+#define T_FILE 2   // File
+#define T_DEVICE 3 // Device
+#define MAX_PATH 1024
+
+struct stat
+{
+  int dev;     // File system's disk device
+  uint ino;    // Inode number
+  short type;  // Type of file
+  short nlink; // Number of links to file
+  uint64 size; // Size of file in bytes
+};
+
 struct cmd
 {
   int type;
@@ -58,8 +72,8 @@ struct backcmd
 int fork1(void); // Fork but panics on failure.
 void panic(char *);
 struct cmd *parsecmd(char *);
-char *str_concat(char *dest, char *src);
-int str_split(char *str, char c, char ***arr);
+char *str_concat(char *dst, char *src);
+int str_split(char *string, const char delimiter, char ***array);
 
 // Execute cmd.  Never returns.
 void runcmd(struct cmd *cmd)
@@ -87,27 +101,47 @@ void runcmd(struct cmd *cmd)
 
     //=====================// Q1 //=====================//
 
-    int fd = open("/path", O_RDONLY);
-    if (fd >= 0)
+    struct stat st;
+    int i = 0;
+    int status = stat("/path", &st);
+    if (status < 0)
     {
-      char *path_vars = (char *)malloc(4096 * sizeof(char));
-      // struct stat st;
-      // stat("/path", &st);
-      // size = st.st_size;
-      int size = read(fd, path_vars, 4096);
-      close(fd);
-      if (size >= 0)
-      {
-        char **paths = 0;
-        fprintf(2, "Path file: %s\n", path_vars);
-        int count = str_split(path_vars, ':', &paths);
-        free(path_vars);
-        for (int i = 0; i < count; i++)
-        {
-          fprintf(2, "Path entered: %s\n", str_concat(paths[i], ecmd->argv[0]));
-          exec(str_concat(paths[i], ecmd->argv[0]), ecmd->argv);
-        }
-      }
+      fprintf(2, "exec %s failed\n", ecmd->argv[0]);
+      break;
+    }
+
+    int size = st.size;
+    int fd = open("/path", O_RDONLY);
+    char *path_vars = (char *)malloc(size * sizeof(char) + 1);
+    size = read(fd, path_vars, size);
+    close(fd);
+    if (size < 0)
+    {
+      fprintf(2, "exec %s failed\n", ecmd->argv[0]);
+      break;
+    }
+
+    fprintf(2, "Path file: %s\n", path_vars);
+    char **paths = 0;
+    int num_of_paths = str_split(path_vars, ':', &paths);
+    free(path_vars);
+
+    // char new_array[][MAX_PATH] = {};
+    // for (i = 0; i < num_of_paths; i++)
+    // {
+    //   strcpy(new_array[i], paths[i]);
+    //   free(paths[i]);
+    // }
+    // free(paths);
+
+    for (i = 0; i < num_of_paths; i++)
+    {
+      // char new[] = "";
+      char *str = str_concat(paths[i], ecmd->argv[0]);
+      // strcpy(new, str);
+      // free(str);
+      fprintf(2, "Path entered: %s\n", str);
+      exec(str, ecmd->argv);
     }
 
     fprintf(2, "exec %s failed\n", ecmd->argv[0]);
@@ -547,7 +581,7 @@ int str_split(char *string, const char delimiter, char ***array)
     length++;
     string++;
   }
-  string -= length; // string was incremented one more than length
+  string -= length;
   char **base = (char **)malloc(sizeof(char *) * (count + 1));
   *array = base;
   for (i = 0; i < count; i++)
@@ -569,12 +603,13 @@ int str_split(char *string, const char delimiter, char ***array)
   return count;
 }
 
-char *str_concat(char *dest, char *src)
+char *str_concat(char *dst, char *src)
 {
-  char *p = dest;
-  while (*p)
-    p++;
-  while ((*p++ = *src++) != '\0');
-  *p = '\0';
-  return dest;
+  int len = strlen(dst) + strlen(src) + 1;
+  char *p = (char *)malloc(sizeof(char) * len);
+  p = strcpy(p, dst);
+  p += strlen(dst);
+  p = strcpy(p, src);
+  p -= strlen(dst);
+  return p;
 }
