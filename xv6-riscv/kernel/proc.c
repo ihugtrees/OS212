@@ -149,6 +149,11 @@ found:
   p->context.ra = (uint64)forkret;
   p->context.sp = p->kstack + PGSIZE;
 
+
+  acquire(&tickslock);
+  p->perf.ctime = ticks;
+  release(&tickslock);
+
   return p;
 }
 
@@ -173,6 +178,12 @@ freeproc(struct proc *p)
   p->xstate = 0;
   p->mask = 0;
   p->state = UNUSED;
+  p->perf.average_bursttime = 0;
+  p->perf.ctime = 0;
+  p->perf.retime = 0;
+  p->perf.rutime = 0;
+  p->perf.stime = 0;
+  p->perf.ttime = 0;
 }
 
 // Create a user page table for a given process,
@@ -386,6 +397,10 @@ void exit(int status)
 
   p->xstate = status;
   p->state = ZOMBIE;
+  
+  acquire(&tickslock);
+  p->perf.ttime = ticks;
+  release(&tickslock);
 
   release(&wait_lock);
 
@@ -697,4 +712,75 @@ int trace(int mask, int pid)
     release(&p->lock);
   }
   return 0;
+}
+
+int wait_stat(uint64 status, uint64 performance)
+{
+
+  struct proc *np;
+  int havekids, pid;
+  struct proc *p = myproc();
+
+  acquire(&wait_lock);
+
+  for (;;)
+  {
+    // Scan through table looking for exited children.
+    havekids = 0;
+    for (np = proc; np < &proc[NPROC]; np++)
+    {
+      if (np->parent == p)
+      {
+        // make sure the child isn't still in exit() or swtch().
+        acquire(&np->lock);
+
+        havekids = 1;
+        if (np->state == ZOMBIE)
+        {
+          // Found one.
+          pid = np->pid;
+          if (status != 0 && copyout(p->pagetable, status, (char *)&np->xstate,
+                                     sizeof(np->xstate)) < 0)
+          {
+            release(&np->lock);
+            release(&wait_lock);
+            return -1;
+          }
+
+          if (performance != 0 && copyout(p->pagetable, performance, (char *)&np->perf,
+                                          sizeof(np->perf)) < 0)
+          {
+            release(&np->lock);
+            release(&wait_lock);
+            return -1;
+          }
+          
+          // struct perf *temp = kalloc();
+          // temp.average_bursttime = np->perf.average_bursttime; //IS THIS LIKE THE THE COMMENTS BELOW?! TODO
+          // temp.ctime = np->perf.ctime;
+          // temp.retime = np->perf.retime;
+          // temp.rutime = np->perf.rutime;
+          // temp.stime = np->perf.stime;
+          // temp.ttime = np->perf.ttime;
+          // performance = &temp;
+          
+          freeproc(np);
+          release(&np->lock);
+          release(&wait_lock);
+          return pid;
+        }
+        release(&np->lock);
+      }
+    }
+
+    // No point waiting if we don't have any children.
+    if (!havekids || p->killed)
+    {
+      release(&wait_lock);
+      return -1;
+    }
+
+    // Wait for a child to exit.
+    sleep(p, &wait_lock); //DOC: wait-sleep
+  }
 }
