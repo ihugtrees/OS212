@@ -149,10 +149,7 @@ found:
   p->context.ra = (uint64)forkret;
   p->context.sp = p->kstack + PGSIZE;
 
-
-  acquire(&tickslock);
-  p->perf.ctime = ticks;
-  release(&tickslock);
+  p->perf.ctime = ticks; //MAYBE NEED TO LOCK THIS TODO
 
   return p;
 }
@@ -397,10 +394,7 @@ void exit(int status)
 
   p->xstate = status;
   p->state = ZOMBIE;
-  
-  acquire(&tickslock);
-  p->perf.ttime = ticks;
-  release(&tickslock);
+  p->perf.ttime = ticks; //MAYBE NEED LOCKS TODO
 
   release(&wait_lock);
 
@@ -782,5 +776,32 @@ int wait_stat(uint64 status, uint64 performance)
 
     // Wait for a child to exit.
     sleep(p, &wait_lock); //DOC: wait-sleep
+  }
+}
+
+void updateProcTicks(void)
+{
+  struct proc *p;
+
+  for (p = proc; p < &proc[NPROC]; p++)
+  {
+    acquire(&p->lock);
+
+    if(p->state == SLEEPING)
+    {
+      p->perf.stime+=1;
+    }
+
+    else if(p->state == RUNNABLE)
+    {
+      p->perf.retime+=1;
+    }
+
+    else // p->state == RUNNING
+    {
+      p->perf.rutime+=1;
+    }
+    
+    release(&p->lock);
   }
 }

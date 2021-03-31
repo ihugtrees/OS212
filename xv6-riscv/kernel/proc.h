@@ -1,5 +1,4 @@
 #include "perf.h"
-
 // Saved registers for kernel context switches.
 struct context {
   uint64 ra;
@@ -99,7 +98,7 @@ struct proc {
   int mask;                    // Mask for trace
 
   //====// Q3 //====//
-  struct perf perf;                 // scheduling information
+  struct perf perf;            // scheduling information
 
   // proc_tree_lock must be held when using this:
   struct proc *parent;         // Parent process
