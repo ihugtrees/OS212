@@ -17,6 +17,7 @@ struct spinlock pid_lock;
 
 extern void forkret(void);
 static void freeproc(struct proc *p);
+void update_avg_burst(struct proc *p);
 
 extern char trampoline[]; // trampoline.S
 
@@ -531,8 +532,8 @@ void yield(void)
   acquire(&p->lock);
   p->state = RUNNABLE;
 
-  updateAvgBurstTime(p);
-  
+  update_avg_burst(p);
+
   sched();
   release(&p->lock);
 }
@@ -578,7 +579,7 @@ void sleep(void *chan, struct spinlock *lk)
   p->chan = chan;
   p->state = SLEEPING;
   
-  updateAvgBurstTime(p);
+  update_avg_burst(p);
 
   sched();
 
@@ -805,6 +806,6 @@ void updateProcTicks(void)
   }
 }
 
-void updateAvgBurstTime(struct proc *p){
+void update_avg_burst(struct proc *p){
   p->perf.average_bursttime = ALPHA*(p->curRuTime)+(100-ALPHA)/100;
 }
