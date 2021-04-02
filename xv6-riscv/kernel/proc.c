@@ -175,7 +175,7 @@ freeproc(struct proc *p)
   p->xstate = 0;
   p->mask = 0;
   p->state = UNUSED;
-  p->perf.average_bursttime = 0;
+  p->perf.average_bursttime = QUANTUM * 100;
   p->perf.ctime = 0;
   p->perf.retime = 0;
   p->perf.rutime = 0;
@@ -436,6 +436,7 @@ int wait(uint64 addr)
             release(&wait_lock);
             return -1;
           }
+
           freeproc(np);
           release(&np->lock);
           release(&wait_lock);
@@ -484,6 +485,7 @@ void scheduler(void)
         // to release its lock and then reacquire it
         // before jumping back to us.
         p->state = RUNNING;
+        p->curRuTime = 0;
         c->proc = p;
         swtch(&c->context, &p->context);
 
@@ -528,6 +530,9 @@ void yield(void)
   struct proc *p = myproc();
   acquire(&p->lock);
   p->state = RUNNABLE;
+
+  updateAvgBurstTime(p);
+  
   sched();
   release(&p->lock);
 }
@@ -572,6 +577,8 @@ void sleep(void *chan, struct spinlock *lk)
   // Go to sleep.
   p->chan = chan;
   p->state = SLEEPING;
+  
+  updateAvgBurstTime(p);
 
   sched();
 
@@ -748,16 +755,7 @@ int wait_stat(uint64 status, uint64 performance)
             release(&wait_lock);
             return -1;
           }
-          
-          // struct perf *temp = kalloc();
-          // temp.average_bursttime = np->perf.average_bursttime; //IS THIS LIKE THE THE COMMENTS BELOW?! TODO
-          // temp.ctime = np->perf.ctime;
-          // temp.retime = np->perf.retime;
-          // temp.rutime = np->perf.rutime;
-          // temp.stime = np->perf.stime;
-          // temp.ttime = np->perf.ttime;
-          // performance = &temp;
-          
+
           freeproc(np);
           release(&np->lock);
           release(&wait_lock);
@@ -787,21 +785,26 @@ void updateProcTicks(void)
   {
     acquire(&p->lock);
 
-    if(p->state == SLEEPING)
+    if (p->state == SLEEPING)
     {
-      p->perf.stime+=1;
+      p->perf.stime += 1;
     }
 
-    else if(p->state == RUNNABLE)
+    else if (p->state == RUNNABLE)
     {
-      p->perf.retime+=1;
+      p->perf.retime += 1;
     }
 
-    else // p->state == RUNNING
+    else if (p->state == RUNNING)
     {
-      p->perf.rutime+=1;
+      p->perf.rutime += 1;
+      p->curRuTime += 1;
     }
-    
+
     release(&p->lock);
   }
+}
+
+void updateAvgBurstTime(struct proc *p){
+  p->perf.average_bursttime = ALPHA*(p->curRuTime)+(100-ALPHA)/100;
 }
