@@ -150,7 +150,10 @@ found:
   p->context.ra = (uint64)forkret;
   p->context.sp = p->kstack + PGSIZE;
 
-  p->perf.ctime = ticks; //MAYBE NEED TO LOCK THIS TODO
+  acquire(&tickslock);
+  p->perf.ctime = ticks; //MAYBE NEED LOCKS TODO
+  release(&tickslock);
+  p->perf.average_bursttime = QUANTUM * 100;
 
   return p;
 }
@@ -395,7 +398,10 @@ void exit(int status)
 
   p->xstate = status;
   p->state = ZOMBIE;
+
+  acquire(&tickslock);
   p->perf.ttime = ticks; //MAYBE NEED LOCKS TODO
+  release(&tickslock);
 
   release(&wait_lock);
 
@@ -578,7 +584,7 @@ void sleep(void *chan, struct spinlock *lk)
   // Go to sleep.
   p->chan = chan;
   p->state = SLEEPING;
-  
+
   update_avg_burst(p);
 
   sched();
@@ -785,7 +791,6 @@ void updateProcTicks(void)
   for (p = proc; p < &proc[NPROC]; p++)
   {
     acquire(&p->lock);
-
     if (p->state == SLEEPING)
     {
       p->perf.stime += 1;
@@ -801,11 +806,11 @@ void updateProcTicks(void)
       p->perf.rutime += 1;
       p->curRuTime += 1;
     }
-
     release(&p->lock);
   }
 }
 
-void update_avg_burst(struct proc *p){
-  p->perf.average_bursttime = ALPHA*(p->curRuTime)+(100-ALPHA)/100;
+void update_avg_burst(struct proc *p)
+{
+  p->perf.average_bursttime = ALPHA * (p->curRuTime) + (100 - ALPHA) / 100;
 }

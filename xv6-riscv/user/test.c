@@ -32,6 +32,7 @@ int main(int argc, char **argv)
     //  struct perf *performance;
 
     int pid = fork();
+
     if (pid == 0)
     {
         sleep(15);
@@ -40,12 +41,16 @@ int main(int argc, char **argv)
         while (x <= 100)
         {
             x += 2;
-            fprintf(2, "x: %d\n", x);
+            fprintf(2, "x: %d", x);
         }
+        fprintf(2,"\n");
         exit(0);
     }
+
     wait_stat(&status, performance);
+    
     fprintf(2, "status: %d\nperformance:\nctime: %d\nttime: %d\nretime: %d\nrutime: %d\nstime: %d\navgbursttime: %d\n", status, performance->ctime, performance->ttime, performance->retime, performance->rutime, performance->stime, performance->average_bursttime);
+
     exit(0);
     return 1;
 }

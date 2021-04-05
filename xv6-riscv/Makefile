@@ -115,7 +115,11 @@ mkfs/mkfs: mkfs/mkfs.c $K/fs.h $K/param.h
 # http://www.gnu.org/software/make/manual/html_node/Chained-Rules.html
 .PRECIOUS: %.o
 
+_path:
+	echo "/:/user/:" > _path
+
 UPROGS=\
+	_path\
 	$U/_cat\
 	$U/_echo\
 	$U/_forktest\
@@ -134,8 +138,8 @@ UPROGS=\
 	$U/_zombie\
 	$U/_test\
 
-fs.img: mkfs/mkfs README path $(UPROGS)
-	mkfs/mkfs fs.img README path $(UPROGS)
+fs.img: mkfs/mkfs README $(UPROGS)
+	mkfs/mkfs fs.img README $(UPROGS)
 
 -include kernel/*.d user/*.d
 
