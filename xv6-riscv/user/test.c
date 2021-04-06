@@ -29,15 +29,28 @@ int main(int argc, char **argv)
 
     int status;
     struct perf *performance = malloc(sizeof(struct perf));
+    //  struct perf *performance;
 
     int pid = fork();
-    if(pid == 0)
+
+    if (pid == 0)
     {
-        fprintf(2,"I'm Child\n");
+        sleep(15);
+        fprintf(2, "I'm Child\n");
+        long x = 1;
+        while (x <= 100)
+        {
+            x += 2;
+            fprintf(2, "x: %d", x);
+        }
+        fprintf(2,"\n");
         exit(0);
     }
+
     wait_stat(&status, performance);
-    fprintf(2, "status: %d\nperformance:\nctime: %d\nttime: %d\n" ,status, performance->ctime, performance->ttime);
+    
+    fprintf(2, "status: %d\nperformance:\nctime: %d\nttime: %d\nretime: %d\nrutime: %d\nstime: %d\navgbursttime: %d\n", status, performance->ctime, performance->ttime, performance->retime, performance->rutime, performance->stime, performance->average_bursttime);
+
     exit(0);
     return 1;
 }
