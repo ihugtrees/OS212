@@ -99,7 +99,7 @@ struct proc {
 
   //====// Q3 //====//
   struct perf perf;            // scheduling information
-  int curRuTime;               // current running time
+  // int curRuTime;               // current running time
 
   // proc_tree_lock must be held when using this:
   struct proc *parent;         // Parent process

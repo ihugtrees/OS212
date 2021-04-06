@@ -10,6 +10,13 @@ struct cpu cpus[NCPU];
 
 struct proc proc[NPROC];
 
+////////// Q4 //////////
+struct proc *proc_queue[NPROC];
+struct spinlock lock_queue;
+int Rear = -1;
+int Front = -1;
+int Size = 1000;
+
 struct proc *initproc;
 
 int nextpid = 1;
@@ -51,6 +58,12 @@ void procinit(void)
 
   initlock(&pid_lock, "nextpid");
   initlock(&wait_lock, "wait_lock");
+
+  if (SCHEDFLAG == FCFS)
+  {
+    initlock(&lock_queue, "queue_lock");
+  }
+
   for (p = proc; p < &proc[NPROC]; p++)
   {
     initlock(&p->lock, "proc");
@@ -339,6 +352,11 @@ int fork(void)
 
   acquire(&np->lock);
   np->state = RUNNABLE;
+  if (SCHEDFLAG == FCFS)
+  {
+    printf("fork son enq\n");
+    enqueue(np);
+  }
   release(&np->lock);
 
   return pid;
@@ -476,7 +494,6 @@ void scheduler(void)
 {
   struct proc *p;
   struct cpu *c = mycpu();
-
   c->proc = 0;
   for (;;)
   {
@@ -492,7 +509,7 @@ void scheduler(void)
         // to release its lock and then reacquire it
         // before jumping back to us.
         p->state = RUNNING;
-        p->curRuTime = 0;
+        qcounter = 0;
         c->proc = p;
         swtch(&c->context, &p->context);
 
@@ -537,6 +554,11 @@ void yield(void)
   struct proc *p = myproc();
   acquire(&p->lock);
   p->state = RUNNABLE;
+  if (SCHEDFLAG == FCFS)
+  {
+    printf("yield enq\n");
+    enqueue(p);
+  }
 
   update_avg_burst(p);
 
@@ -611,6 +633,11 @@ void wakeup(void *chan)
       if (p->state == SLEEPING && p->chan == chan)
       {
         p->state = RUNNABLE;
+        if (SCHEDFLAG == FCFS)
+        {
+          printf("wakeup enq\n");
+          enqueue(p);
+        }
       }
       release(&p->lock);
     }
@@ -634,6 +661,11 @@ int kill(int pid)
       {
         // Wake process from sleep().
         p->state = RUNNABLE;
+        if (SCHEDFLAG == FCFS)
+        {
+          printf("kill enq\n");
+          enqueue(p);
+        }
       }
       release(&p->lock);
       return 0;
@@ -719,7 +751,7 @@ int trace(int mask, int pid)
     }
     release(&p->lock);
   }
-  return 0;
+  return -1;
 }
 
 int wait_stat(uint64 status, uint64 performance)
@@ -787,7 +819,6 @@ int wait_stat(uint64 status, uint64 performance)
 void updateProcTicks(void)
 {
   struct proc *p;
-
   for (p = proc; p < &proc[NPROC]; p++)
   {
     acquire(&p->lock);
@@ -804,7 +835,6 @@ void updateProcTicks(void)
     else if (p->state == RUNNING)
     {
       p->perf.rutime += 1;
-      p->curRuTime += 1;
     }
     release(&p->lock);
   }
@@ -812,5 +842,101 @@ void updateProcTicks(void)
 
 void update_avg_burst(struct proc *p)
 {
-  p->perf.average_bursttime = ALPHA * (p->curRuTime) + (100 - ALPHA) / 100;
+  p->perf.average_bursttime = (ALPHA * (qcounter)) + ((100 - ALPHA) / 100);
+}
+
+int enqueue(struct proc *p)
+{
+  // acquire(&lock_queue);
+  if (Rear == Size - 1)
+  {
+    printf("Overflow queue\n");
+    //release(&lock_queue);
+    return -1;
+  }
+  else
+  {
+    printf("enq: %s\n", p->name);
+    if (Front == -1)
+      Front = 0;
+    Rear += 1;
+    proc_queue[Rear] = p;
+    //release(&lock_queue);
+    printf("released enc\n");
+    return 0;
+  }
+}
+
+struct proc *dequeue(void)
+{
+  printf("released enc\n");
+  // acquire(&lock_queue);
+  struct proc *p = 0;
+  if (Front == -1 || Front > Rear)
+  {
+    printf("Underflow queue\n");
+    // release(&lock_queue);
+    return p;
+  }
+  else
+  {
+    printf("deq: %s\n", p->name);
+    p = proc_queue[Front];
+    Front = Front + 1;
+    // release(&lock_queue);
+    return p;
+  }
+}
+
+void fcfs_sched(void)
+{
+  struct cpu *c = mycpu();
+  struct proc *p;
+  c->proc = 0;
+
+  for (;;)
+  {
+    // Avoid deadlock by ensuring that devices can interrupt.
+    intr_on();
+
+    for (p = proc; p < &proc[NPROC]; p++)
+    {
+      acquire(&p->lock);
+      if (p->state == RUNNABLE)
+      {
+        printf("enq loop\n");
+        enqueue(p);
+      }
+      release(&p->lock);
+    }
+    
+    p = dequeue();
+    acquire(&p->lock);
+
+    // Switch to chosen process.  It is the process's job
+    // to release its lock and then reacquire it
+    // before jumping back to us.
+    p->state = RUNNING;
+    c->proc = p;
+    swtch(&c->context, &p->context);
+
+    // Process is done running for now.
+    // It should have changed its p->state before coming back.
+    c->proc = 0;
+    release(&p->lock);
+  }
+}
+
+void srt_sched(void)
+{
+  for (;;)
+  {
+  }
+}
+
+void cfsd_sched(void)
+{
+  for (;;)
+  {
+  }
 }

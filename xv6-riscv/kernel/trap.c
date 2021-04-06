@@ -8,7 +8,7 @@
 
 struct spinlock tickslock;
 uint ticks;
-uint qcounter = 0;
+uint qcounter;
 
 extern char trampoline[], uservec[], userret[];
 
@@ -80,10 +80,16 @@ void usertrap(void)
     exit(-1);
 
   // give up the CPU if this is a timer interrupt.
-  if (which_dev == 2){
-    qcounter++;
-    if(qcounter == QUANTUM)
-    yield();}
+  if (which_dev == 2)
+  {
+    if (SCHEDFLAG == DEFAULT && qcounter == QUANTUM)
+    {
+      yield();
+    }
+    else if (SCHEDFLAG == FCFS)
+    {
+    }
+  }
 
   usertrapret();
 }
@@ -155,7 +161,12 @@ void kerneltrap()
 
   // give up the CPU if this is a timer interrupt.
   if (which_dev == 2 && myproc() != 0 && myproc()->state == RUNNING)
-    yield();
+  {
+    if (SCHEDFLAG == DEFAULT && qcounter == QUANTUM)
+    {
+      yield();
+    }
+  }
 
   // the yield() may have caused some traps to occur,
   // so restore trap registers for use by kernelvec.S's sepc instruction.
@@ -166,8 +177,8 @@ void kerneltrap()
 void clockintr()
 {
   acquire(&tickslock);
-  
   ticks++;
+  qcounter++;
   updateProcTicks();
   wakeup(&ticks);
 

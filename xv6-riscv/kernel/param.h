@@ -11,5 +11,9 @@
 #define NBUF         (MAXOPBLOCKS*3)  // size of disk block cache
 #define FSSIZE       1000  // size of file system in blocks
 #define MAXPATH      128   // maximum file path name
-#define QUANTUM      5   //
+#define QUANTUM      5
 #define ALPHA        50
+#define DEFAULT      0
+#define FCFS         1
+#define SRT          2
+#define CFSD         3

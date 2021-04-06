@@ -10,6 +10,11 @@ struct stat;
 struct superblock;
 struct perf;
 
+// queue.c
+int             enqueue(struct proc *p);
+struct proc*    dequeue(void);
+void            initQueueLock(void);
+
 // bio.c
 void            binit(void);
 struct buf*     bread(uint, uint);
@@ -106,9 +111,15 @@ void            yield(void);
 int             either_copyout(int user_dst, uint64 dst, void *src, uint64 len);
 int             either_copyin(void *dst, int user_src, uint64 src, uint64 len);
 void            procdump(void);
+////////// Q2 //////////
 int             trace(int mask, int pid);
+////////// Q3 //////////
 int             wait_stat(uint64 stat, uint64 performance);
 void            updateProcTicks(void);
+////////// Q4 //////////
+void            fcfs_sched(void) __attribute__((noreturn));
+void            srt_sched(void) __attribute__((noreturn));
+void            cfsd_sched(void) __attribute__((noreturn));
 
 // swtch.S
 void            swtch(struct context*, struct context*);
@@ -146,6 +157,7 @@ void            syscall();
 
 // trap.c
 extern uint     ticks;
+extern uint     qcounter;
 void            trapinit(void);
 void            trapinithart(void);
 extern struct spinlock tickslock;

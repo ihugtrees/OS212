@@ -6,6 +6,7 @@
         "stat.h": "c",
         "syscall.h": "c",
         "spinlock.h": "c",
-        "defs.h": "c"
+        "defs.h": "c",
+        "param.h": "c"
     }
 }
