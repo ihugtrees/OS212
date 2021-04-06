@@ -163,10 +163,11 @@ void
 clockintr()
 {
   acquire(&tickslock);
+  
   ticks++;
-
   updateProcTicks();
   wakeup(&ticks);
+
   release(&tickslock);
 }
 
