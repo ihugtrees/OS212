@@ -166,6 +166,7 @@ found:
   p->perf.ctime = ticks; //MAYBE NEED LOCKS TODO
   release(&tickslock);
   p->perf.average_bursttime = QUANTUM * 100;
+  p->decay_factor = 5;
 
   return p;
 }
@@ -197,6 +198,7 @@ freeproc(struct proc *p)
   p->perf.rutime = 0;
   p->perf.stime = 0;
   p->perf.ttime = 0;
+  p->decay_factor = 5;
 }
 
 // Create a user page table for a given process,
@@ -343,7 +345,10 @@ int fork(void)
   safestrcpy(np->name, p->name, sizeof(p->name));
 
   pid = np->pid;
+
+  //fields to child
   np->mask = p->mask;
+  np->decay_factor = p->decay_factor;
 
   release(&np->lock);
 
@@ -933,6 +938,11 @@ void srt_sched(void)
     // Switch to chosen process.  It is the process's job
     // to release its lock and then reacquire it
     // before jumping back to us.
+    if (min->state != RUNNABLE)
+    {
+      release(&min->lock);
+      continue;
+    }
     min->state = RUNNING;
     min->cur_run_time = 0;
     c->proc = min;
@@ -975,15 +985,6 @@ int set_priority(int priority)
   return ret;
 }
 
-float calc_ratio(struct proc *p)
-{
-  if ((p->perf.rutime + p->perf.stime) == 0)
-    return -1;
-  float top = (float) p->perf.rutime * p->decay_factor;
-  float bot = (float) p->perf.rutime + p->perf.stime;
-  return (top / bot);
-}
-
 void cfsd_sched(void)
 {
   struct proc *p;
@@ -993,18 +994,25 @@ void cfsd_sched(void)
   {
     // Avoid deadlock by ensuring that devices can interrupt.
     intr_on();
-    float min = 0;
+    int topMin = -1, botMin = -1;
+
     struct proc *min_proc = 0;
     for (p = proc; p < &proc[NPROC]; p++)
     {
       acquire(&p->lock);
       if (p->state == RUNNABLE)
       {
-        float calc = calc_ratio(p);
-        if (min == 0 || calc < min)
+        int top = (int)p->perf.rutime * p->decay_factor;
+        int bot = (int)p->perf.rutime + p->perf.stime;
+        // printf("\ntopMin*bot>botMin*top = %d*%d > %d*%d", topMin, bot, botMin, top);
+        ;
+        // printf("\nid: %d\n", p->pid);
+        if ((topMin == -1 && botMin == -1) || (topMin * bot > botMin * top))
         {
-          min = calc;
+          topMin = top;
+          botMin = bot;
           min_proc = p;
+          // printf("\nwe will take id: %d\n", p->pid);
         }
       }
       release(&p->lock);
@@ -1017,6 +1025,12 @@ void cfsd_sched(void)
     // Switch to chosen process.  It is the process's job
     // to release its lock and then reacquire it
     // before jumping back to us.
+    if (min_proc->state != RUNNABLE)
+    {
+      release(&min_proc->lock);
+      continue;
+    }
+
     min_proc->state = RUNNING;
     min_proc->cur_run_time = 0;
     c->proc = min_proc;
@@ -1028,3 +1042,5 @@ void cfsd_sched(void)
     release(&min_proc->lock);
   }
 }
+
+//TODO LOCK TRACE
