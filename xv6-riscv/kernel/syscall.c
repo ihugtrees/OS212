@@ -102,6 +102,7 @@ extern uint64 sys_write(void);
 extern uint64 sys_uptime(void);
 extern uint64 sys_trace(void);
 extern uint64 sys_wait_stat(void);
+extern uint64 sys_set_priority(void);
 
 static uint64 (*syscalls[])(void) = {
     [SYS_fork] sys_fork,
@@ -127,6 +128,7 @@ static uint64 (*syscalls[])(void) = {
     [SYS_close] sys_close,
     [SYS_trace] sys_trace,
     [SYS_wait_stat] sys_wait_stat,
+    [SYS_set_priority] sys_set_priority,
 };
 
 static char *sysNames[64] = {
@@ -152,7 +154,8 @@ static char *sysNames[64] = {
     [SYS_mkdir] "mkdir",
     [SYS_close] "close",
     [SYS_trace] "trace",
-    [SYS_wait_stat] "sys_wait_stat",
+    [SYS_wait_stat] "wait_stat",
+    [SYS_set_priority] "set_priority",
 };
 
 void syscall(void)

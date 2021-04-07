@@ -13,9 +13,8 @@ struct proc proc[NPROC];
 ////////// Q4 //////////
 struct proc *proc_queue[NPROC];
 struct spinlock lock_queue;
-int Rear = -1;
-int Front = -1;
-int Size = 1000;
+int first = 0;
+int last = 0;
 
 struct proc *initproc;
 
@@ -277,6 +276,9 @@ void userinit(void)
 
   p->state = RUNNABLE;
 
+  if (SCHEDFLAG == FCFS)
+    enqueue(p);
+
   release(&p->lock);
 }
 
@@ -341,7 +343,6 @@ int fork(void)
   safestrcpy(np->name, p->name, sizeof(p->name));
 
   pid = np->pid;
-
   np->mask = p->mask;
 
   release(&np->lock);
@@ -352,11 +353,10 @@ int fork(void)
 
   acquire(&np->lock);
   np->state = RUNNABLE;
+
   if (SCHEDFLAG == FCFS)
-  {
-    printf("fork son enq\n");
     enqueue(np);
-  }
+
   release(&np->lock);
 
   return pid;
@@ -483,45 +483,6 @@ int wait(uint64 addr)
   }
 }
 
-// Per-CPU process scheduler.
-// Each CPU calls scheduler() after setting itself up.
-// Scheduler never returns.  It loops, doing:
-//  - choose a process to run.
-//  - swtch to start running that process.
-//  - eventually that process transfers control
-//    via swtch back to the scheduler.
-void scheduler(void)
-{
-  struct proc *p;
-  struct cpu *c = mycpu();
-  c->proc = 0;
-  for (;;)
-  {
-    // Avoid deadlock by ensuring that devices can interrupt.
-    intr_on();
-
-    for (p = proc; p < &proc[NPROC]; p++)
-    {
-      acquire(&p->lock);
-      if (p->state == RUNNABLE)
-      {
-        // Switch to chosen process.  It is the process's job
-        // to release its lock and then reacquire it
-        // before jumping back to us.
-        p->state = RUNNING;
-        qcounter = 0;
-        c->proc = p;
-        swtch(&c->context, &p->context);
-
-        // Process is done running for now.
-        // It should have changed its p->state before coming back.
-        c->proc = 0;
-      }
-      release(&p->lock);
-    }
-  }
-}
-
 // Switch to scheduler.  Must hold only p->lock
 // and have changed proc->state. Saves and restores
 // intena because intena is a property of this
@@ -556,7 +517,6 @@ void yield(void)
   p->state = RUNNABLE;
   if (SCHEDFLAG == FCFS)
   {
-    printf("yield enq\n");
     enqueue(p);
   }
 
@@ -635,7 +595,6 @@ void wakeup(void *chan)
         p->state = RUNNABLE;
         if (SCHEDFLAG == FCFS)
         {
-          printf("wakeup enq\n");
           enqueue(p);
         }
       }
@@ -663,7 +622,6 @@ int kill(int pid)
         p->state = RUNNABLE;
         if (SCHEDFLAG == FCFS)
         {
-          printf("kill enq\n");
           enqueue(p);
         }
       }
@@ -816,7 +774,7 @@ int wait_stat(uint64 status, uint64 performance)
   }
 }
 
-void updateProcTicks(void)
+void update_proc_ticks(void)
 {
   struct proc *p;
   for (p = proc; p < &proc[NPROC]; p++)
@@ -835,6 +793,7 @@ void updateProcTicks(void)
     else if (p->state == RUNNING)
     {
       p->perf.rutime += 1;
+      p->cur_run_time += 1;
     }
     release(&p->lock);
   }
@@ -842,49 +801,75 @@ void updateProcTicks(void)
 
 void update_avg_burst(struct proc *p)
 {
-  p->perf.average_bursttime = (ALPHA * (qcounter)) + ((100 - ALPHA) / 100);
+  p->perf.average_bursttime = (ALPHA * (p->cur_run_time)) + ((100 - ALPHA) / 100);
 }
 
 int enqueue(struct proc *p)
 {
-  // acquire(&lock_queue);
-  if (Rear == Size - 1)
+  acquire(&lock_queue);
+  if (((last + 1) % NPROC) == first)
   {
-    printf("Overflow queue\n");
-    //release(&lock_queue);
+    release(&lock_queue);
     return -1;
   }
-  else
-  {
-    printf("enq: %s\n", p->name);
-    if (Front == -1)
-      Front = 0;
-    Rear += 1;
-    proc_queue[Rear] = p;
-    //release(&lock_queue);
-    printf("released enc\n");
-    return 0;
-  }
+
+  proc_queue[last] = p;
+  last = (last + 1) % NPROC;
+  release(&lock_queue);
+  return 0;
 }
 
 struct proc *dequeue(void)
 {
-  printf("released enc\n");
-  // acquire(&lock_queue);
-  struct proc *p = 0;
-  if (Front == -1 || Front > Rear)
+  acquire(&lock_queue);
+  if (first == last)
   {
-    printf("Underflow queue\n");
-    // release(&lock_queue);
-    return p;
+    release(&lock_queue);
+    return 0;
   }
-  else
+
+  first = (first + 1) % NPROC;
+  struct proc *p = proc_queue[first - 1];
+  release(&lock_queue);
+  return p;
+}
+
+// Per-CPU process scheduler.
+// Each CPU calls scheduler() after setting itself up.
+// Scheduler never returns.  It loops, doing:
+//  - choose a process to run.
+//  - swtch to start running that process.
+//  - eventually that process transfers control
+//    via swtch back to the scheduler.
+void scheduler(void)
+{
+  struct proc *p;
+  struct cpu *c = mycpu();
+  c->proc = 0;
+  for (;;)
   {
-    printf("deq: %s\n", p->name);
-    p = proc_queue[Front];
-    Front = Front + 1;
-    // release(&lock_queue);
-    return p;
+    // Avoid deadlock by ensuring that devices can interrupt.
+    intr_on();
+
+    for (p = proc; p < &proc[NPROC]; p++)
+    {
+      acquire(&p->lock);
+      if (p->state == RUNNABLE)
+      {
+        // Switch to chosen process.  It is the process's job
+        // to release its lock and then reacquire it
+        // before jumping back to us.
+        p->state = RUNNING;
+        p->cur_run_time = 0;
+        c->proc = p;
+        swtch(&c->context, &p->context);
+
+        // Process is done running for now.
+        // It should have changed its p->state before coming back.
+        c->proc = 0;
+      }
+      release(&p->lock);
+    }
   }
 }
 
@@ -899,24 +884,15 @@ void fcfs_sched(void)
     // Avoid deadlock by ensuring that devices can interrupt.
     intr_on();
 
-    for (p = proc; p < &proc[NPROC]; p++)
-    {
-      acquire(&p->lock);
-      if (p->state == RUNNABLE)
-      {
-        printf("enq loop\n");
-        enqueue(p);
-      }
-      release(&p->lock);
-    }
-    
-    p = dequeue();
+    if ((p = dequeue()) == 0)
+      continue;
     acquire(&p->lock);
 
     // Switch to chosen process.  It is the process's job
     // to release its lock and then reacquire it
     // before jumping back to us.
     p->state = RUNNING;
+    p->cur_run_time = 0;
     c->proc = p;
     swtch(&c->context, &p->context);
 
@@ -929,14 +905,126 @@ void fcfs_sched(void)
 
 void srt_sched(void)
 {
+  struct proc *p;
+  struct cpu *c = mycpu();
+  c->proc = 0;
   for (;;)
   {
+    // Avoid deadlock by ensuring that devices can interrupt.
+    intr_on();
+    struct proc *min = 0;
+    for (p = proc; p < &proc[NPROC]; p++)
+    {
+      acquire(&p->lock);
+      if (p->state == RUNNABLE)
+      {
+        if (min == 0 || p->perf.average_bursttime < min->perf.average_bursttime)
+        {
+          min = p;
+        }
+      }
+      release(&p->lock);
+    }
+
+    if (min == 0)
+      continue;
+
+    acquire(&min->lock);
+    // Switch to chosen process.  It is the process's job
+    // to release its lock and then reacquire it
+    // before jumping back to us.
+    min->state = RUNNING;
+    min->cur_run_time = 0;
+    c->proc = min;
+    swtch(&c->context, &min->context);
+
+    // Process is done running for now.
+    // It should have changed its p->state before coming back.
+    c->proc = 0;
+    release(&min->lock);
   }
+}
+
+int set_priority(int priority)
+{
+  struct proc *p = myproc();
+  int ret = -1;
+  switch (priority)
+  {
+  case 1:
+    p->decay_factor = 1;
+    ret = 0;
+    break;
+  case 2:
+    p->decay_factor = 3;
+    ret = 0;
+    break;
+  case 3:
+    p->decay_factor = 5;
+    ret = 0;
+    break;
+  case 4:
+    p->decay_factor = 7;
+    ret = 0;
+    break;
+  case 5:
+    p->decay_factor = 25;
+    ret = 0;
+    break;
+  }
+  return ret;
+}
+
+float calc_ratio(struct proc *p)
+{
+  if ((p->perf.rutime + p->perf.stime) == 0)
+    return -1;
+  float top = (float) p->perf.rutime * p->decay_factor;
+  float bot = (float) p->perf.rutime + p->perf.stime;
+  return (top / bot);
 }
 
 void cfsd_sched(void)
 {
+  struct proc *p;
+  struct cpu *c = mycpu();
+  c->proc = 0;
   for (;;)
   {
+    // Avoid deadlock by ensuring that devices can interrupt.
+    intr_on();
+    float min = 0;
+    struct proc *min_proc = 0;
+    for (p = proc; p < &proc[NPROC]; p++)
+    {
+      acquire(&p->lock);
+      if (p->state == RUNNABLE)
+      {
+        float calc = calc_ratio(p);
+        if (min == 0 || calc < min)
+        {
+          min = calc;
+          min_proc = p;
+        }
+      }
+      release(&p->lock);
+    }
+
+    if (min_proc == 0)
+      continue;
+
+    acquire(&min_proc->lock);
+    // Switch to chosen process.  It is the process's job
+    // to release its lock and then reacquire it
+    // before jumping back to us.
+    min_proc->state = RUNNING;
+    min_proc->cur_run_time = 0;
+    c->proc = min_proc;
+    swtch(&c->context, &min_proc->context);
+
+    // Process is done running for now.
+    // It should have changed its p->state before coming back.
+    c->proc = 0;
+    release(&min_proc->lock);
   }
 }

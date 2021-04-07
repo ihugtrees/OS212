@@ -8,7 +8,6 @@
 
 struct spinlock tickslock;
 uint ticks;
-uint qcounter;
 
 extern char trampoline[], uservec[], userret[];
 
@@ -82,12 +81,9 @@ void usertrap(void)
   // give up the CPU if this is a timer interrupt.
   if (which_dev == 2)
   {
-    if (SCHEDFLAG == DEFAULT && qcounter == QUANTUM)
+    if (SCHEDFLAG != FCFS && p->cur_run_time == QUANTUM)
     {
       yield();
-    }
-    else if (SCHEDFLAG == FCFS)
-    {
     }
   }
 
@@ -159,10 +155,11 @@ void kerneltrap()
     panic("kerneltrap");
   }
 
+  struct proc *p = myproc();
   // give up the CPU if this is a timer interrupt.
-  if (which_dev == 2 && myproc() != 0 && myproc()->state == RUNNING)
+  if (which_dev == 2 && p != 0 && p->state == RUNNING)
   {
-    if (SCHEDFLAG == DEFAULT && qcounter == QUANTUM)
+    if (SCHEDFLAG != FCFS && p->cur_run_time == QUANTUM)
     {
       yield();
     }
@@ -178,8 +175,7 @@ void clockintr()
 {
   acquire(&tickslock);
   ticks++;
-  qcounter++;
-  updateProcTicks();
+  update_proc_ticks();
   wakeup(&ticks);
 
   release(&tickslock);

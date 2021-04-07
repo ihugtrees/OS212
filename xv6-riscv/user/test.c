@@ -35,7 +35,7 @@ int main(int argc, char **argv)
         if (fork() == 0)
         {
             sleep(5);
-            fprintf(2, "I'm Child Y\n");
+            fprintf(2, "\nI'm Child Y\n");
             long x = 1;
             while (x <= 1000)
             {
@@ -46,7 +46,7 @@ int main(int argc, char **argv)
             exit(0);
         }
         sleep(5);
-        fprintf(2, "I'm Child X\n");
+        fprintf(2, "\nI'm Child X\n");
         long x = 1;
         while (x <= 1000)
         {

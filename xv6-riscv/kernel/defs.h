@@ -115,11 +115,12 @@ void            procdump(void);
 int             trace(int mask, int pid);
 ////////// Q3 //////////
 int             wait_stat(uint64 stat, uint64 performance);
-void            updateProcTicks(void);
+void            update_proc_ticks(void);
 ////////// Q4 //////////
 void            fcfs_sched(void) __attribute__((noreturn));
 void            srt_sched(void) __attribute__((noreturn));
 void            cfsd_sched(void) __attribute__((noreturn));
+int             set_priority(int priority);
 
 // swtch.S
 void            swtch(struct context*, struct context*);
@@ -157,7 +158,6 @@ void            syscall();
 
 // trap.c
 extern uint     ticks;
-extern uint     qcounter;
 void            trapinit(void);
 void            trapinithart(void);
 extern struct spinlock tickslock;
