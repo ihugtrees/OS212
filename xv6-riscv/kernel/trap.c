@@ -81,6 +81,7 @@ void usertrap(void)
   // give up the CPU if this is a timer interrupt.
   if (which_dev == 2)
   {
+    // printf("curTIme: %d\n", p->cur_run_time);
     if (SCHEDFLAG != FCFS && p->cur_run_time == QUANTUM)
     {
       yield();
@@ -159,6 +160,7 @@ void kerneltrap()
   // give up the CPU if this is a timer interrupt.
   if (which_dev == 2 && p != 0 && p->state == RUNNING)
   {
+    // printf("curTIme: %d\n", p->cur_run_time);
     if (SCHEDFLAG != FCFS && p->cur_run_time == QUANTUM)
     {
       yield();

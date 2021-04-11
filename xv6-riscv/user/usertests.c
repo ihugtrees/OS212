@@ -798,6 +798,7 @@ killstatus(char *s)
       }
       exit(0);
     }
+    // printf("child 1 pid: %d\n", pid1);
     sleep(1);
     kill(pid1);
     wait(&xst);
@@ -930,6 +931,7 @@ twochildren(char *s)
   for(int i = 0; i < 1000; i++){
     int pid1 = fork();
     if(pid1 < 0){
+      // printf("1 failed\n");
       printf("%s: fork failed\n", s);
       exit(1);
     }
@@ -938,14 +940,18 @@ twochildren(char *s)
     } else {
       int pid2 = fork();
       if(pid2 < 0){
+        // printf("2 failed\n");
         printf("%s: fork failed\n", s);
         exit(1);
       }
       if(pid2 == 0){
         exit(0);
       } else {
+        // printf("1\n");
         wait(0);
+        // printf("2\n");
         wait(0);
+        // printf("3\n");
       }
     }
   }
@@ -1026,6 +1032,7 @@ forkforkfork(char *s)
 void
 reparent2(char *s)
 {
+  // printf("parentPid: %d\n", getpid());
   for(int i = 0; i < 800; i++){
     int pid1 = fork();
     if(pid1 < 0){
@@ -1035,6 +1042,7 @@ reparent2(char *s)
     if(pid1 == 0){
       fork();
       fork();
+      // printf("%d\n", getpid());
       exit(0);
     }
     wait(0);
@@ -2632,8 +2640,10 @@ execout(char *s)
       // allocate all of memory.
       while(1){
         uint64 a = (uint64) sbrk(4096);
-        if(a == 0xffffffffffffffffLL)
+        if(a == 0xffffffffffffffffLL){
+          // printf("a: %x  ", a);
           break;
+        }
         *(char*)(a + 4096 - 1) = 1;
       }
 
@@ -2645,8 +2655,10 @@ execout(char *s)
       close(1);
       char *args[] = { "echo", "x", 0 };
       exec("echo", args);
+      printf("%d exiting...", getpid());
       exit(0);
     } else {
+      // printf("child pid: %d\n", pid);
       wait((int*)0);
     }
   }
@@ -2748,131 +2760,135 @@ run(void f(char *), char *s) {
 int
 main(int argc, char *argv[])
 {
-  int continuous = 0;
-  char *justone = 0;
+  // int continuous = 0;
+  // char *justone = 0;
 
-  if(argc == 2 && strcmp(argv[1], "-c") == 0){
-    continuous = 1;
-  } else if(argc == 2 && strcmp(argv[1], "-C") == 0){
-    continuous = 2;
-  } else if(argc == 2 && argv[1][0] != '-'){
-    justone = argv[1];
-  } else if(argc > 1){
-    printf("Usage: usertests [-c] [testname]\n");
-    exit(1);
+  // if(argc == 2 && strcmp(argv[1], "-c") == 0){
+  //   continuous = 1;
+  // } else if(argc == 2 && strcmp(argv[1], "-C") == 0){
+  //   continuous = 2;
+  // } else if(argc == 2 && argv[1][0] != '-'){
+  //   justone = argv[1];
+  // } else if(argc > 1){
+  //   printf("Usage: usertests [-c] [testname]\n");
+  //   exit(1);
+  // }
+  
+  // struct test {
+  //   void (*f)(char *);
+  //   char *s;
+  // } tests[] = {
+  //   {manywrites, "manywrites"},
+  //   {execout, "execout"},
+  //   {copyin, "copyin"},
+  //   {copyout, "copyout"},
+  //   {copyinstr1, "copyinstr1"},
+  //   {copyinstr2, "copyinstr2"},
+  //   {copyinstr3, "copyinstr3"},
+  //   {rwsbrk, "rwsbrk" },
+  //   {truncate1, "truncate1"},
+  //   {truncate2, "truncate2"},
+  //   {truncate3, "truncate3"},
+  //   {reparent2, "reparent2"},
+  //   {pgbug, "pgbug" },
+  //   {sbrkbugs, "sbrkbugs" },
+  //   // {badwrite, "badwrite" },
+  //   {badarg, "badarg" },
+  //   {reparent, "reparent" },
+  //   {twochildren, "twochildren"},
+  //   {forkfork, "forkfork"},
+  //   {forkforkfork, "forkforkfork"},
+  //   {argptest, "argptest"},
+  //   {createdelete, "createdelete"},
+  //   {linkunlink, "linkunlink"},
+  //   {linktest, "linktest"},
+  //   {unlinkread, "unlinkread"},
+  //   {concreate, "concreate"},
+  //   {subdir, "subdir"},
+  //   {fourfiles, "fourfiles"},
+  //   {sharedfd, "sharedfd"},
+  //   {dirtest, "dirtest"},
+  //   {exectest, "exectest"},
+  //   {bigargtest, "bigargtest"},
+  //   {bigwrite, "bigwrite"},
+  //   {bsstest, "bsstest"},
+  //   {sbrkbasic, "sbrkbasic"},
+  //   {sbrkmuch, "sbrkmuch"},
+  //   {kernmem, "kernmem"},
+  //   {sbrkfail, "sbrkfail"},
+  //   {sbrkarg, "sbrkarg"},
+  //   {validatetest, "validatetest"},
+  //   {stacktest, "stacktest"},
+  //   {opentest, "opentest"},
+  //   {writetest, "writetest"},
+  //   {writebig, "writebig"},
+  //   {createtest, "createtest"},
+  //   {openiputtest, "openiput"},
+  //   {exitiputtest, "exitiput"},
+  //   {iputtest, "iput"},
+  //   {mem, "mem"},
+  //   {pipe1, "pipe1"},
+  //   {killstatus, "killstatus"},
+  //   {preempt, "preempt"},
+  //   {exitwait, "exitwait"},
+  //   {rmdot, "rmdot"},
+  //   {fourteen, "fourteen"},
+  //   {bigfile, "bigfile"},
+  //   {dirfile, "dirfile"},
+  //   {iref, "iref"},
+  //   {forktest, "forktest"},
+  //   {bigdir, "bigdir"}, // slow
+  //   { 0, 0},
+  // };
+  for(int i=0; i<100; i++){
+    run(reparent2, "reparent2");
   }
   
-  struct test {
-    void (*f)(char *);
-    char *s;
-  } tests[] = {
-    {manywrites, "manywrites"},
-    {execout, "execout"},
-    {copyin, "copyin"},
-    {copyout, "copyout"},
-    {copyinstr1, "copyinstr1"},
-    {copyinstr2, "copyinstr2"},
-    {copyinstr3, "copyinstr3"},
-    {rwsbrk, "rwsbrk" },
-    {truncate1, "truncate1"},
-    {truncate2, "truncate2"},
-    {truncate3, "truncate3"},
-    {reparent2, "reparent2"},
-    {pgbug, "pgbug" },
-    {sbrkbugs, "sbrkbugs" },
-    // {badwrite, "badwrite" },
-    {badarg, "badarg" },
-    {reparent, "reparent" },
-    {twochildren, "twochildren"},
-    {forkfork, "forkfork"},
-    {forkforkfork, "forkforkfork"},
-    {argptest, "argptest"},
-    {createdelete, "createdelete"},
-    {linkunlink, "linkunlink"},
-    {linktest, "linktest"},
-    {unlinkread, "unlinkread"},
-    {concreate, "concreate"},
-    {subdir, "subdir"},
-    {fourfiles, "fourfiles"},
-    {sharedfd, "sharedfd"},
-    {dirtest, "dirtest"},
-    {exectest, "exectest"},
-    {bigargtest, "bigargtest"},
-    {bigwrite, "bigwrite"},
-    {bsstest, "bsstest"},
-    {sbrkbasic, "sbrkbasic"},
-    {sbrkmuch, "sbrkmuch"},
-    {kernmem, "kernmem"},
-    {sbrkfail, "sbrkfail"},
-    {sbrkarg, "sbrkarg"},
-    {validatetest, "validatetest"},
-    {stacktest, "stacktest"},
-    {opentest, "opentest"},
-    {writetest, "writetest"},
-    {writebig, "writebig"},
-    {createtest, "createtest"},
-    {openiputtest, "openiput"},
-    {exitiputtest, "exitiput"},
-    {iputtest, "iput"},
-    {mem, "mem"},
-    {pipe1, "pipe1"},
-    {killstatus, "killstatus"},
-    {preempt, "preempt"},
-    {exitwait, "exitwait"},
-    {rmdot, "rmdot"},
-    {fourteen, "fourteen"},
-    {bigfile, "bigfile"},
-    {dirfile, "dirfile"},
-    {iref, "iref"},
-    {forktest, "forktest"},
-    {bigdir, "bigdir"}, // slow
-    { 0, 0},
-  };
+  exit(0);
+  // if(continuous){
+  //   printf("continuous usertests starting\n");
+  //   while(1){
+  //     int fail = 0;
+  //     int free0 = countfree();
+  //     for (struct test *t = tests; t->s != 0; t++) {
+  //       if(!run(t->f, t->s)){
+  //         fail = 1;
+  //         break;
+  //       }
+  //     }
+  //     if(fail){
+  //       printf("SOME TESTS FAILED\n");
+  //       if(continuous != 2)
+  //         exit(1);
+  //     }
+  //     int free1 = countfree();
+  //     if(free1 < free0){
+  //       printf("FAILED -- lost %d free pages\n", free0 - free1);
+  //       if(continuous != 2)
+  //         exit(1);
+  //     }
+  //   }
+  // }
 
-  if(continuous){
-    printf("continuous usertests starting\n");
-    while(1){
-      int fail = 0;
-      int free0 = countfree();
-      for (struct test *t = tests; t->s != 0; t++) {
-        if(!run(t->f, t->s)){
-          fail = 1;
-          break;
-        }
-      }
-      if(fail){
-        printf("SOME TESTS FAILED\n");
-        if(continuous != 2)
-          exit(1);
-      }
-      int free1 = countfree();
-      if(free1 < free0){
-        printf("FAILED -- lost %d free pages\n", free0 - free1);
-        if(continuous != 2)
-          exit(1);
-      }
-    }
-  }
+  // printf("usertests starting\n");
+  // int free0 = countfree();
+  // int free1 = 0;
+  // int fail = 0;
+  // for (struct test *t = tests; t->s != 0; t++) {
+  //   if((justone == 0) || strcmp(t->s, justone) == 0) {
+  //     if(!run(t->f, t->s))
+  //       fail = 1;
+  //   }
+  // }
 
-  printf("usertests starting\n");
-  int free0 = countfree();
-  int free1 = 0;
-  int fail = 0;
-  for (struct test *t = tests; t->s != 0; t++) {
-    if((justone == 0) || strcmp(t->s, justone) == 0) {
-      if(!run(t->f, t->s))
-        fail = 1;
-    }
-  }
-
-  if(fail){
-    printf("SOME TESTS FAILED\n");
-    exit(1);
-  } else if((free1 = countfree()) < free0){
-    printf("FAILED -- lost some free pages %d (out of %d)\n", free1, free0);
-    exit(1);
-  } else {
-    printf("ALL TESTS PASSED\n");
-    exit(0);
-  }
+  // if(fail){
+  //   printf("SOME TESTS FAILED\n");
+  //   exit(1);
+  // } else if((free1 = countfree()) < free0){
+  //   printf("FAILED -- lost some free pages %d (out of %d)\n", free1, free0);
+  //   exit(1);
+  // } else {
+  //   printf("ALL TESTS PASSED\n");
+  //   exit(0);
+  // }
 }

@@ -7,6 +7,10 @@
         "syscall.h": "c",
         "spinlock.h": "c",
         "defs.h": "c",
-        "param.h": "c"
+        "param.h": "c",
+        "atomic": "c",
+        "*.tcc": "c",
+        "fstream": "c",
+        "sstream": "c"
     }
 }

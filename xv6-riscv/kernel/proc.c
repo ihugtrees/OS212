@@ -162,9 +162,9 @@ found:
   p->context.ra = (uint64)forkret;
   p->context.sp = p->kstack + PGSIZE;
 
-  acquire(&tickslock);
+  // acquire(&tickslock);
   p->perf.ctime = ticks; //MAYBE NEED LOCKS TODO
-  release(&tickslock);
+  // release(&tickslock);
   p->perf.average_bursttime = QUANTUM * 100;
   p->decay_factor = 5;
 
@@ -422,9 +422,9 @@ void exit(int status)
   p->xstate = status;
   p->state = ZOMBIE;
 
-  acquire(&tickslock);
+  // acquire(&tickslock);
   p->perf.ttime = ticks; //MAYBE NEED LOCKS TODO
-  release(&tickslock);
+  // release(&tickslock);
 
   release(&wait_lock);
 
@@ -466,7 +466,7 @@ int wait(uint64 addr)
             release(&wait_lock);
             return -1;
           }
-
+          // printf("child: %d\n",np->pid);
           freeproc(np);
           release(&np->lock);
           release(&wait_lock);
@@ -475,6 +475,8 @@ int wait(uint64 addr)
         release(&np->lock);
       }
     }
+
+    // printf("kids: %d\n", havekids);
 
     // No point waiting if we don't have any children.
     if (!havekids || p->killed)
@@ -781,10 +783,10 @@ int wait_stat(uint64 status, uint64 performance)
 
 void update_proc_ticks(void)
 {
+  // printf("x");
   struct proc *p;
   for (p = proc; p < &proc[NPROC]; p++)
   {
-    acquire(&p->lock);
     if (p->state == SLEEPING)
     {
       p->perf.stime += 1;
@@ -797,10 +799,11 @@ void update_proc_ticks(void)
 
     else if (p->state == RUNNING)
     {
+      // printf("y\n");
+      // printf("ticks\n");
       p->perf.rutime += 1;
       p->cur_run_time += 1;
     }
-    release(&p->lock);
   }
 }
 
@@ -812,6 +815,7 @@ void update_avg_burst(struct proc *p)
 int enqueue(struct proc *p)
 {
   acquire(&lock_queue);
+  // printf("enqued: %d at: %d\n",p->pid, last);
   if (((last + 1) % NPROC) == first)
   {
     release(&lock_queue);
@@ -834,7 +838,14 @@ struct proc *dequeue(void)
   }
 
   first = (first + 1) % NPROC;
-  struct proc *p = proc_queue[first - 1];
+  // printf("first: %d ", first-1);
+  struct proc *p = 0;
+  if(first-1 == -1)
+    p = proc_queue[NPROC-1];
+  else
+    p = proc_queue[first - 1];
+  
+  // printf("running now: %d\n", p->pid);
   release(&lock_queue);
   return p;
 }
@@ -861,10 +872,12 @@ void scheduler(void)
       acquire(&p->lock);
       if (p->state == RUNNABLE)
       {
+        // printf("running now: %d\n", p->pid);
         // Switch to chosen process.  It is the process's job
         // to release its lock and then reacquire it
         // before jumping back to us.
         p->state = RUNNING;
+        // printf("running now: %d\n", p->pid);
         p->cur_run_time = 0;
         c->proc = p;
         swtch(&c->context, &p->context);
@@ -892,6 +905,7 @@ void fcfs_sched(void)
     if ((p = dequeue()) == 0)
       continue;
     acquire(&p->lock);
+    // printf("first: %d\nlast: %d\n", first, last);
 
     // Switch to chosen process.  It is the process's job
     // to release its lock and then reacquire it
