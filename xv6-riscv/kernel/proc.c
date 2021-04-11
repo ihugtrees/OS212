@@ -975,25 +975,30 @@ int set_priority(int priority)
 
   switch (priority)
   {
-  case THIGHP:
+  case 1:
+    p->decay_factor = THIGHP;
     break;
 
-  case HIGHP:
+  case 2:
+    p->decay_factor = HIGHP;
     break;
 
-  case NORMALP:
+  case 3:
+    p->decay_factor = NORMALP;
     break;
   
-  case LOWP:
+  case 4:
+    p->decay_factor = LOWP;
     break;
 
-  case TLOWP:
+  case 5:
+    p->decay_factor = TLOWP;
     break;
   
   default:
     return -1;
   }
-  p->decay_factor = priority;
+  
   return 0;
   
 }
