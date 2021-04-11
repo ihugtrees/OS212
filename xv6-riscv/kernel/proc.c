@@ -198,7 +198,7 @@ freeproc(struct proc *p)
   p->perf.rutime = 0;
   p->perf.stime = 0;
   p->perf.ttime = 0;
-  p->decay_factor = 5;
+  p->decay_factor = NORMALP;
 }
 
 // Create a user page table for a given process,
@@ -972,31 +972,30 @@ void srt_sched(void)
 int set_priority(int priority)
 {
   struct proc *p = myproc();
-  int ret = -1;
+
   switch (priority)
   {
-  case 1:
-    p->decay_factor = 1;
-    ret = 0;
+  case THIGHP:
     break;
-  case 2:
-    p->decay_factor = 3;
-    ret = 0;
+
+  case HIGHP:
     break;
-  case 3:
-    p->decay_factor = 5;
-    ret = 0;
+
+  case NORMALP:
     break;
-  case 4:
-    p->decay_factor = 7;
-    ret = 0;
+  
+  case LOWP:
     break;
-  case 5:
-    p->decay_factor = 25;
-    ret = 0;
+
+  case TLOWP:
     break;
+  
+  default:
+    return -1;
   }
-  return ret;
+  p->decay_factor = priority;
+  return 0;
+  
 }
 
 void cfsd_sched(void)
@@ -1017,16 +1016,17 @@ void cfsd_sched(void)
       if (p->state == RUNNABLE)
       {
         int top = (int)p->perf.rutime * p->decay_factor;
-        int bot = (int)p->perf.rutime + p->perf.stime;
+        int bot = (int)p->perf.retime + p->perf.stime;
+
         // printf("\ntopMin*bot>botMin*top = %d*%d > %d*%d", topMin, bot, botMin, top);
-        ;
         // printf("\nid: %d\n", p->pid);
-        if ((topMin == -1 && botMin == -1) || (topMin * bot > botMin * top))
+
+        if ((topMin == -1 && botMin == -1) || (top==0 && topMin!=0) || (topMin * bot > botMin * top))
         {
           topMin = top;
           botMin = bot;
           min_proc = p;
-          // printf("\nwe will take id: %d\n", p->pid);
+          
         }
       }
       release(&p->lock);
@@ -1044,7 +1044,7 @@ void cfsd_sched(void)
       release(&min_proc->lock);
       continue;
     }
-
+    // printf("\nwe will take id: %d\n", min_proc->pid);
     min_proc->state = RUNNING;
     min_proc->cur_run_time = 0;
     c->proc = min_proc;

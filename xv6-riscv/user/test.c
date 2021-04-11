@@ -2,6 +2,7 @@
 #include "user/user.h"
 #include "kernel/fcntl.h"
 #include "kernel/perf.h"
+#include "kernel/param.h"
 
 int main(int argc, char **argv)
 {
@@ -27,6 +28,7 @@ int main(int argc, char **argv)
     // }
     // exit(0);
 
+    
     int status;
     struct perf *performance = malloc(sizeof(struct perf));
 
@@ -34,7 +36,6 @@ int main(int argc, char **argv)
     {
         if (fork() == 0)
         {
-            set_priority(1);
             sleep(1);
             fprintf(2, "\nI'm Child %d Y\n", getpid());
             long x = 1;
@@ -46,7 +47,8 @@ int main(int argc, char **argv)
             fprintf(2, "\n");
             exit(0);
         }
-        sleep(5);
+        int pr = set_priority(THIGHP);
+        printf("\npr = %d\n", pr);
         fprintf(2, "\nI'm Child %d X\n", getpid());
         long x = 1;
         while (x <= 1000)

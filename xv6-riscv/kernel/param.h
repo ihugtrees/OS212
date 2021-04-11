@@ -17,3 +17,9 @@
 #define FCFS         1
 #define SRT          2
 #define CFSD         3
+
+#define THIGHP       1
+#define HIGHP        3
+#define NORMALP      5
+#define LOWP         7
+#define TLOWP        25
