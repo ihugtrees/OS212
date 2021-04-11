@@ -126,7 +126,6 @@ _path:
 	echo "/:/user/:" > _path
 
 UPROGS=\
-	_path\
 	$U/_cat\
 	$U/_echo\
 	$U/_forktest\
@@ -144,6 +143,7 @@ UPROGS=\
 	$U/_wc\
 	$U/_zombie\
 	$U/_test\
+	_path\
 
 fs.img: mkfs/mkfs README $(UPROGS)
 	mkfs/mkfs fs.img README $(UPROGS)

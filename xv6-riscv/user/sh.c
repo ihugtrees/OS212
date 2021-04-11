@@ -121,7 +121,7 @@ void runcmd(struct cmd *cmd)
       break;
     }
 
-    fprintf(2, "Path file: %s\n", path_vars);
+    // fprintf(2, "Path file: %s\n", path_vars);
     char **paths = 0;
     int num_of_paths = str_split(path_vars, ':', &paths);
     free(path_vars);
@@ -140,7 +140,7 @@ void runcmd(struct cmd *cmd)
       char *str = str_concat(paths[i], ecmd->argv[0]);
       // strcpy(new, str);
       // free(str);
-      fprintf(2, "Path entered: %s\n", str);
+      // fprintf(2, "Path entered: %s\n", str);
       exec(str, ecmd->argv);
     }
 
