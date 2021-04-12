@@ -101,7 +101,7 @@ struct proc {
   struct perf perf;            // scheduling information
   int cur_run_time;            // current running time
 
-  //====// Q3 //====//
+  //====// Q4 //====//
   int decay_factor;                // priority
 
   // proc_tree_lock must be held when using this:

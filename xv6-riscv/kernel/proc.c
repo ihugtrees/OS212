@@ -846,7 +846,7 @@ struct proc *dequeue(void)
     p = proc_queue[NPROC-1];
   else
     p = proc_queue[first - 1];
-  
+
   // printf("running now: %d\n", p->pid);
   release(&lock_queue);
   return p;
@@ -988,7 +988,7 @@ int set_priority(int priority)
   case 3:
     p->decay_factor = NORMALP;
     break;
-  
+
   case 4:
     p->decay_factor = LOWP;
     break;
@@ -996,13 +996,13 @@ int set_priority(int priority)
   case 5:
     p->decay_factor = TLOWP;
     break;
-  
+
   default:
     return -1;
   }
-  
+
   return 0;
-  
+
 }
 
 void cfsd_sched(void)
@@ -1033,7 +1033,7 @@ void cfsd_sched(void)
           topMin = top;
           botMin = bot;
           min_proc = p;
-          
+
         }
       }
       release(&p->lock);
