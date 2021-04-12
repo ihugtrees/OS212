@@ -24,6 +24,8 @@ struct spinlock pid_lock;
 extern void forkret(void);
 static void freeproc(struct proc *p);
 void update_avg_burst(struct proc *p);
+int enqueue(struct proc *p);
+struct proc *dequeue(void);
 
 extern char trampoline[]; // trampoline.S
 
@@ -367,7 +369,7 @@ int fork(void)
   return pid;
 }
 
-// Pass p's abandoned children to init.
+// Pass p's abandoned children to `.
 // Caller must hold wait_lock.
 void reparent(struct proc *p)
 {
