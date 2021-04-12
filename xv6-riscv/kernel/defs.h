@@ -10,11 +10,6 @@ struct stat;
 struct superblock;
 struct perf;
 
-// queue.c
-int             enqueue(struct proc *p);
-struct proc*    dequeue(void);
-void            initQueueLock(void);
-
 // bio.c
 void            binit(void);
 struct buf*     bread(uint, uint);

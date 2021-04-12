@@ -798,7 +798,6 @@ killstatus(char *s)
       }
       exit(0);
     }
-    // printf("child 1 pid: %d\n", pid1);
     sleep(1);
     kill(pid1);
     wait(&xst);
@@ -817,56 +816,44 @@ preempt(char *s)
   int pid1, pid2, pid3;
   int pfds[2];
 
-  // printf("\nPPid = %d", getpid());
-
   pid1 = fork();
   if(pid1 < 0) {
     printf("%s: fork failed", s);
     exit(1);
   }
-  if(pid1 == 0){
-    // printf("%d\n", getpid());
+  if(pid1 == 0)
     for(;;)
       ;
-  }
 
   pid2 = fork();
   if(pid2 < 0) {
     printf("%s: fork failed\n", s);
     exit(1);
   }
-  if(pid2 == 0){
-    // printf("%d\n", getpid());
+  if(pid2 == 0)
     for(;;)
       ;
-  }
 
   pipe(pfds);
   pid3 = fork();
-  // if(pid3>0) printf("created child 3 pid = %d", pid3);
   if(pid3 < 0) {
      printf("%s: fork failed\n", s);
      exit(1);
   }
   if(pid3 == 0){
-    // printf("enters child 3 and is Id = %d", getpid());
     close(pfds[0]);
-    // printf("22222\n");
     if(write(pfds[1], "x", 1) != 1)
       printf("%s: preempt write error", s);
     close(pfds[1]);
-    // printf("333333\n");
     for(;;)
       ;
   }
-  // printf("44444\n");
+
   close(pfds[1]);
-  // printf("5555555\n");
   if(read(pfds[0], buf, sizeof(buf)) != 1){
     printf("%s: preempt read error", s);
     return;
   }
-  // printf("6666666666\n");
   close(pfds[0]);
   printf("kill... ");
   kill(pid1);
@@ -943,7 +930,6 @@ twochildren(char *s)
   for(int i = 0; i < 1000; i++){
     int pid1 = fork();
     if(pid1 < 0){
-      // printf("1 failed\n");
       printf("%s: fork failed\n", s);
       exit(1);
     }
@@ -952,18 +938,14 @@ twochildren(char *s)
     } else {
       int pid2 = fork();
       if(pid2 < 0){
-        // printf("2 failed\n");
         printf("%s: fork failed\n", s);
         exit(1);
       }
       if(pid2 == 0){
         exit(0);
       } else {
-        // printf("1\n");
         wait(0);
-        // printf("2\n");
         wait(0);
-        // printf("3\n");
       }
     }
   }
@@ -1044,7 +1026,6 @@ forkforkfork(char *s)
 void
 reparent2(char *s)
 {
-  // printf("parentPid: %d\n", getpid());
   for(int i = 0; i < 800; i++){
     int pid1 = fork();
     if(pid1 < 0){
@@ -1054,7 +1035,6 @@ reparent2(char *s)
     if(pid1 == 0){
       fork();
       fork();
-      // printf("%d\n", getpid());
       exit(0);
     }
     wait(0);
@@ -2652,10 +2632,8 @@ execout(char *s)
       // allocate all of memory.
       while(1){
         uint64 a = (uint64) sbrk(4096);
-        if(a == 0xffffffffffffffffLL){
-          // printf("a: %x  ", a);
+        if(a == 0xffffffffffffffffLL)
           break;
-        }
         *(char*)(a + 4096 - 1) = 1;
       }
 
@@ -2667,10 +2645,8 @@ execout(char *s)
       close(1);
       char *args[] = { "echo", "x", 0 };
       exec("echo", args);
-      printf("%d exiting...", getpid());
       exit(0);
     } else {
-      // printf("child pid: %d\n", pid);
       wait((int*)0);
     }
   }
@@ -2852,11 +2828,7 @@ main(int argc, char *argv[])
     {bigdir, "bigdir"}, // slow
     { 0, 0},
   };
-  // for(int i=0; i<100; i++){
-  //   run(preempt, "reparent2");
-  // }
-  
-  // exit(0);
+
   if(continuous){
     printf("continuous usertests starting\n");
     while(1){
