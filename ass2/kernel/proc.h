@@ -93,6 +93,12 @@ struct proc {
   int xstate;                  // Exit status to be returned to parent's wait
   int pid;                     // Process ID
 
+  ////////// Q2 //////////
+  uint pending_signals;
+  uint signal_mask;
+  void* signal_handler;
+  struct trapframe* user_trapframe_backup;
+
   // proc_tree_lock must be held when using this:
   struct proc *parent;         // Parent process
 
