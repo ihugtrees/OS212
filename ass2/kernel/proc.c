@@ -149,9 +149,12 @@ found:
   p->context.ra = (uint64)forkret;
   p->context.sp = p->kstack + PGSIZE;
 
-  p->signal_handler = SIG_DFL;
-  p->signal_mask = 0;
+  p->signal_mask = SIG_DFL;
   p->pending_signals = 0;
+  for (int i = 0; i < 32; i++)
+  {
+    p->signal_handlers[i] = SIG_DFL;
+  }
 
   return p;
 }
@@ -327,8 +330,12 @@ int fork(void)
   release(&wait_lock);
 
   acquire(&np->lock);
-  np->signal_handler = p->signal_handler;
   np->signal_mask = p->signal_mask;
+  np->pending_signals = 0;
+  for (int i = 0; i < 32; i++)
+  {
+    np->signal_handlers[i] = p->signal_handlers[i];
+  }
   np->state = RUNNABLE;
   release(&np->lock);
 
@@ -694,4 +701,19 @@ uint sigprocmask(uint sigmask)
   return old_mask;
 }
 
-// int sigaction(int signum, const struct sigaction *act, struct sigaction *oldact);
+int sigaction(int signum, const struct sigaction *act, struct sigaction *oldact)
+{
+  struct proc *p = myproc();
+  if (signum < 0 || signum > 31 || act == 0)
+    return -1;
+  if (oldact != 0 && copyout(p->pagetable, (uint64)oldact, (char *)&p->signal_handlers[signum],
+                             sizeof(p->signal_handlers[signum])) < 0)
+    return -1;
+  p->signal_handlers[signum] = (void *)act;
+  return 0;
+}
+
+void sigret(void)
+{
+  // TODO 
+}

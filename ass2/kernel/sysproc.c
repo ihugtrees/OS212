@@ -98,13 +98,34 @@ sys_uptime(void)
   return xticks;
 }
 
-uint64 
+uint64
 sys_sigprocmask(void)
 {
   uint mask;
-  if (argint(0, &mask) < 0)
+  if (argint(0, (int *)&mask) < 0)
     return -1;
   return sigprocmask(mask);
 }
 
-// uint64 sigaction (int signum, const struct sigaction *act, struct sigaction *oldact);
+uint64
+sys_sigaction(void)
+{
+  int signum;
+  uint64 act;
+  uint64 oldact;
+  if (argint(0, &signum) < 0)
+    return -1;
+  if (argaddr(1, &act) < 0)
+    return -1;
+  if (argaddr(2, &oldact) < 0)
+    return -1;
+
+  return sigaction(signum, (struct sigaction *)act, (struct sigaction *)oldact);
+}
+
+uint64
+sys_sigret(void)
+{
+  sigret();
+  return 0;
+}

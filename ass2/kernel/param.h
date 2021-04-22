@@ -12,6 +12,7 @@
 #define FSSIZE       1000  // size of file system in blocks
 #define MAXPATH      128   // maximum file path name
 
+////////// Q2 //////////
 #define SIG_DFL      0     /* default signal handling */
 #define SIG_IGN      1     /* ignore signal */
 #define SIGKILL      9

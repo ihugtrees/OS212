@@ -1063,5 +1063,3 @@ void cfsd_sched(void)
     release(&min_proc->lock);
   }
 }
-
-//TODO LOCK TRACE
