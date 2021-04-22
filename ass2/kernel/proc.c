@@ -607,7 +607,7 @@ void wakeup(void *chan)
 // Kill the process with the given pid.
 // The victim won't exit until it tries to return
 // to user space (see usertrap() in trap.c).
-int kill(int pid)
+int kill(int pid, int signum)
 {
   struct proc *p;
 
@@ -616,9 +616,13 @@ int kill(int pid)
     acquire(&p->lock);
     if (p->pid == pid)
     {
+
       p->killed = 1;
       if (p->state == SLEEPING)
       {
+        // int pending = 1 << signum;
+        // p->pending_signals = p->pending_signals | pending;
+        // TODO
         // Wake process from sleep().
         p->state = RUNNABLE;
       }
