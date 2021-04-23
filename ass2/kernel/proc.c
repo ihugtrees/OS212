@@ -709,7 +709,7 @@ uint sigprocmask(uint sigmask)
 {
   struct proc *p = myproc();
   uint old_mask = p->signal_mask;
-  sigmask = sigmask & ~(1<<SIGSTOP) & ~(1<<SIGKILL);
+  sigmask = sigmask & ~(1 << SIGSTOP) & ~(1 << SIGKILL);
   p->signal_mask = sigmask;
 
   return old_mask;
@@ -733,8 +733,7 @@ void sigret(void)
   // TODO
 }
 
-int
-sigkill_handler(int pid)
+int sigkill_handler(int pid)
 {
   struct proc *p;
 
@@ -758,8 +757,7 @@ sigkill_handler(int pid)
   return -1;
 }
 
-int
-sigcont_handler(int pid)
+int sigcont_handler(int pid)
 {
   struct proc *p;
 
@@ -768,10 +766,10 @@ sigcont_handler(int pid)
     acquire(&p->lock);
     if (p->pid == pid)
     {
-     p->frozen = 0;
+      p->frozen = 0;
 
-     release(&p->lock);
-     return 0;
+      release(&p->lock);
+      return 0;
     }
 
     release(&p->lock);
@@ -779,8 +777,7 @@ sigcont_handler(int pid)
   return -1;
 }
 
-int
-sigstop_handler(int pid)
+int sigstop_handler(int pid)
 {
   struct proc *p;
 
@@ -799,4 +796,3 @@ sigstop_handler(int pid)
   }
   return -1;
 }
-
