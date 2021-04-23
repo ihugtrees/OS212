@@ -149,8 +149,9 @@ found:
   p->context.ra = (uint64)forkret;
   p->context.sp = p->kstack + PGSIZE;
 
-  p->signal_mask = SIG_DFL;
+  p->signal_mask = 0;
   p->pending_signals = 0;
+  p->user_trapframe_backup = 0;
   for (int i = 0; i < 32; i++)
   {
     p->signal_handlers[i] = SIG_DFL;
@@ -176,6 +177,7 @@ freeproc(struct proc *p)
   p->parent = 0;
   p->name[0] = 0;
   p->chan = 0;
+  p->frozen = 0;
   p->killed = 0;
   p->xstate = 0;
   p->state = UNUSED;
@@ -609,6 +611,9 @@ void wakeup(void *chan)
 // to user space (see usertrap() in trap.c).
 int kill(int pid, int signum)
 {
+  if (signum < 0 || signum > 31)
+    return -1;
+
   struct proc *p;
 
   for (p = proc; p < &proc[NPROC]; p++)
@@ -616,18 +621,22 @@ int kill(int pid, int signum)
     acquire(&p->lock);
     if (p->pid == pid)
     {
-
-      p->killed = 1;
-      if (p->state == SLEEPING)
+      if (signum == SIGKILL)
       {
-        // int pending = 1 << signum;
-        // p->pending_signals = p->pending_signals | pending;
-        // TODO
-        // Wake process from sleep().
-        p->state = RUNNABLE;
+        p->killed = 1;
+        if (p->state == SLEEPING)
+        {
+          // Wake process from sleep().
+          p->state = RUNNABLE;
+        }
+        release(&p->lock);
+        return 0;
       }
-      release(&p->lock);
-      return 0;
+      else
+      {
+        int pending = 1 << signum;
+        p->pending_signals = p->pending_signals | pending;
+      }
     }
     release(&p->lock);
   }
@@ -700,6 +709,7 @@ uint sigprocmask(uint sigmask)
 {
   struct proc *p = myproc();
   uint old_mask = p->signal_mask;
+  sigmask = sigmask & ~(1<<SIGSTOP) & ~(1<<SIGKILL);
   p->signal_mask = sigmask;
 
   return old_mask;
@@ -708,16 +718,85 @@ uint sigprocmask(uint sigmask)
 int sigaction(int signum, const struct sigaction *act, struct sigaction *oldact)
 {
   struct proc *p = myproc();
-  if (signum < 0 || signum > 31 || act == 0)
+  if (signum < 0 || signum > 31 || act == 0 || signum == SIGKILL || signum == SIGSTOP)
     return -1;
   if (oldact != 0 && copyout(p->pagetable, (uint64)oldact, (char *)&p->signal_handlers[signum],
                              sizeof(p->signal_handlers[signum])) < 0)
     return -1;
+
   p->signal_handlers[signum] = (void *)act;
   return 0;
 }
 
 void sigret(void)
 {
-  // TODO 
+  // TODO
 }
+
+int
+sigkill_handler(int pid)
+{
+  struct proc *p;
+
+  for (p = proc; p < &proc[NPROC]; p++)
+  {
+    acquire(&p->lock);
+    if (p->pid == pid)
+    {
+      p->killed = 1;
+      if (p->state == SLEEPING)
+      {
+        // Wake process from sleep().
+        p->state = RUNNABLE;
+      }
+      release(&p->lock);
+      return 0;
+    }
+
+    release(&p->lock);
+  }
+  return -1;
+}
+
+int
+sigcont_handler(int pid)
+{
+  struct proc *p;
+
+  for (p = proc; p < &proc[NPROC]; p++)
+  {
+    acquire(&p->lock);
+    if (p->pid == pid)
+    {
+     p->frozen = 0;
+
+     release(&p->lock);
+     return 0;
+    }
+
+    release(&p->lock);
+  }
+  return -1;
+}
+
+int
+sigstop_handler(int pid)
+{
+  struct proc *p;
+
+  for (p = proc; p < &proc[NPROC]; p++)
+  {
+    acquire(&p->lock);
+    if (p->pid == pid)
+    {
+      p->frozen = 1;
+
+      release(&p->lock);
+      return 0;
+    }
+
+    release(&p->lock);
+  }
+  return -1;
+}
+

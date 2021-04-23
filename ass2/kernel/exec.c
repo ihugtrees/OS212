@@ -116,6 +116,7 @@ int exec(char *path, char **argv)
   p->sz = sz;
   p->trapframe->epc = elf.entry; // initial program counter = main
   p->trapframe->sp = sp;         // initial stack pointer
+  
   for (int i = 0; i < 32; i++)
   {
     if (p->signal_handlers[i] != (void *)SIG_IGN)
