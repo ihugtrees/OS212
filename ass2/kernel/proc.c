@@ -619,25 +619,8 @@ int kill(int pid, int signum)
   for (p = proc; p < &proc[NPROC]; p++)
   {
     acquire(&p->lock);
-    if (p->pid == pid)
-    {
-      if (signum == SIGKILL)
-      {
-        p->killed = 1;
-        if (p->state == SLEEPING)
-        {
-          // Wake process from sleep().
-          p->state = RUNNABLE;
-        }
-        release(&p->lock);
-        return 0;
-      }
-      else
-      {
-        int pending = 1 << signum;
-        p->pending_signals = p->pending_signals | pending;
-      }
-    }
+    int pending = 1 << signum;
+    p->pending_signals = p->pending_signals | pending;
     release(&p->lock);
   }
   return -1;
@@ -733,66 +716,31 @@ void sigret(void)
   // TODO
 }
 
-int sigkill_handler(int pid)
+int sigkill_handler()
 {
-  struct proc *p;
-
-  for (p = proc; p < &proc[NPROC]; p++)
+  struct proc *p = myproc();
+  p->killed = 1;
+  if (p->state == SLEEPING)
   {
-    acquire(&p->lock);
-    if (p->pid == pid)
-    {
-      p->killed = 1;
-      if (p->state == SLEEPING)
-      {
-        // Wake process from sleep().
-        p->state = RUNNABLE;
-      }
-      release(&p->lock);
-      return 0;
-    }
-
-    release(&p->lock);
+    // Wake process from sleep().
+    p->state = RUNNABLE;
+    return 0;
   }
   return -1;
 }
 
-int sigcont_handler(int pid)
+int sigcont_handler()
 {
-  struct proc *p;
+  struct proc *p = myproc();
+  p->frozen = 0;
 
-  for (p = proc; p < &proc[NPROC]; p++)
-  {
-    acquire(&p->lock);
-    if (p->pid == pid)
-    {
-      p->frozen = 0;
-
-      release(&p->lock);
-      return 0;
-    }
-
-    release(&p->lock);
-  }
-  return -1;
+  return 0;
 }
 
-int sigstop_handler(int pid)
+int sigstop_handler()
 {
-  struct proc *p;
+  struct proc *p = myproc();
+  p->frozen = 1;
 
-  for (p = proc; p < &proc[NPROC]; p++)
-  {
-    acquire(&p->lock);
-    if (p->pid == pid)
-    {
-      p->frozen = 1;
-
-      release(&p->lock);
-      return 0;
-    }
-
-    release(&p->lock);
-  }
-  return -1;
+  return 0;
 }

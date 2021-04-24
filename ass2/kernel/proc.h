@@ -105,7 +105,6 @@ struct proc
   int xstate;           // Exit status to be returned to parent's wait
   int pid;              // Process ID
 
-  int frozen;
 
   // proc_tree_lock must be held when using this:
   struct proc *parent; // Parent process
@@ -125,4 +124,5 @@ struct proc
   uint signal_mask;
   void *signal_handlers[32];
   struct trapframe *user_trapframe_backup;
+  int frozen;
 };
