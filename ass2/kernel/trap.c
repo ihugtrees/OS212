@@ -5,6 +5,7 @@
 #include "spinlock.h"
 #include "proc.h"
 #include "defs.h"
+#include "sigaction.h"
 
 struct spinlock tickslock;
 uint ticks;
@@ -124,7 +125,11 @@ void usertrapret(void)
     if ((p->pending_signals >> i & 1) && !(p->signal_mask >> i & 1))
     {
       p->pending_signals = p->pending_signals & ~(1 << i);
-      if (p->signal_handlers[i] == SIG_DFL)
+      if (p->signal_handlers[i] == SIG_IGN)
+      {
+        continue;
+      }
+      else if (p->signal_handlers[i] == SIG_DFL)
       {
         switch (i)
         {
@@ -136,17 +141,41 @@ void usertrapret(void)
           sigcont_handler();
           break;
 
-        case SIG_IGN:
-          continue;
-          break;
-
         default:
           sigkill_handler();
         }
       }
       else
       {
-        struct sigaction* handler = p->signal_handlers[i];
+        struct sigaction *handler = (struct sigaction *)p->signal_handlers[i];
+        uint mask_backup = p->signal_mask;
+        // p->signal_mask = handler->sigmask;
+        if (handler->sa_handler == SIG_IGN)
+        {
+          continue;
+          // p->signal_mask = mask_backup;
+        }
+        else if (handler->sa_handler == SIG_DFL)
+        {
+          switch (i)
+          {
+          case SIGSTOP:
+            sigstop_handler();
+            p->signal_mask = mask_backup;
+            break;
+
+          case SIGCONT:
+            sigcont_handler();
+            p->signal_mask = mask_backup;
+            break;
+
+          default:
+            p->signal_mask = handler->sigmask;
+            // TODO REGISTERS AND SHIT
+            handler->sa_handler(p->pid);
+            p->signal_mask = mask_backup;
+          }
+        }
       }
     }
   }
