@@ -324,7 +324,7 @@ iter()
   int st1 = -1;
   wait(&st1);
   if(st1 != 0){
-    kill(pid1, 9);
+    kill(pid1, SIGKILL);
     kill(pid2, 9);
   }
   int st2 = -1;

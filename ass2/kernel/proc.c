@@ -152,7 +152,7 @@ found:
 
   p->signal_mask = 0;
   p->pending_signals = 0;
-  p->user_trapframe_backup = 0;
+  p->user_trapframe_backup = (struct trapframe *)kalloc();
   for (int i = 0; i < 32; i++)
   {
     p->signal_handlers[i] = SIG_DFL;
@@ -181,6 +181,10 @@ freeproc(struct proc *p)
   p->frozen = 0;
   p->killed = 0;
   p->xstate = 0;
+
+  if (p->user_trapframe_backup)
+    kfree((void *)p->user_trapframe_backup);
+
   p->state = UNUSED;
 }
 
@@ -619,13 +623,15 @@ int kill(int pid, int signum)
 
   for (p = proc; p < &proc[NPROC]; p++)
   {
+    // printf("kill before acquire ");
     acquire(&p->lock);
-    
+    // printf("kill after acquire\n");
     if (p->pid == pid)
     {
       int pending = 1 << signum;
       p->pending_signals = p->pending_signals | pending;
       release(&p->lock);
+      printf("kill pid %d signum %d my pid %d\n", pid, signum, myproc()->pid);
       return 0;
     }
     release(&p->lock);
@@ -707,13 +713,15 @@ uint sigprocmask(uint sigmask)
 
 int sigaction(int signum, const struct sigaction *act, struct sigaction *oldact)
 {
+  // if ((void *)act->sa_handler != 0)
+  //   printf("sigaction %x", (void *)act->sa_handler);
+
   struct proc *p = myproc();
   if (signum < 0 || signum > 31 || act == 0 || signum == SIGKILL || signum == SIGSTOP)
     return -1;
   if (oldact != 0 && copyout(p->pagetable, (uint64)oldact, (char *)&p->signal_handlers[signum],
                              sizeof(p->signal_handlers[signum])) < 0)
     return -1;
-
   p->signal_handlers[signum] = (void *)act;
   return 0;
 }
@@ -722,7 +730,7 @@ void sigret(void)
 {
   struct proc *p = myproc();
 
-  p->trapframe = p->user_trapframe_backup;
+  *p->trapframe = *p->user_trapframe_backup;
 
   return;
 }
@@ -731,6 +739,7 @@ int sigkill_handler()
 {
   struct proc *p = myproc();
   p->killed = 1;
+  printf("sigkill_handler pid %d signum %d\n", p->pid, 9);
   if (p->state == SLEEPING)
   {
     // Wake process from sleep().
@@ -758,16 +767,18 @@ int sigstop_handler()
 
 void handle_signal(struct proc *p)
 {
+  // printf("handle_signal pid %d \n", p->pid);
   for (int i = 0; i < 32; i++)
   {
     if ((p->pending_signals >> i & 1) && !(p->signal_mask >> i & 1))
     {
+      printf("handle_signal pid %d signal %d, my pid %d\n", p->pid, i, myproc()->pid);
       p->pending_signals = p->pending_signals & ~(1 << i);
       if (p->signal_handlers[i] == (void *)SIG_IGN)
       {
         continue;
       }
-      else if (p->signal_handlers[i] == SIG_DFL)
+      else if (p->signal_handlers[i] == (void *)SIG_DFL)
       {
         switch (i)
         {
@@ -785,13 +796,17 @@ void handle_signal(struct proc *p)
       }
       else
       {
+        printf("user hadnler pid %d signal %d\n", p->pid, i);
         struct sigaction *handler = (struct sigaction *)p->signal_handlers[i];
+        printf("user hadnler got handler\n", p->pid, i);
         if (handler->sa_handler == (void *)SIG_IGN)
         {
+          printf("user hadnler ignore pid %d signal %d\n", p->pid, i);
           continue;
         }
         else if (handler->sa_handler == SIG_DFL)
         {
+          printf("user hadnler default pid %d signal %d\n", p->pid, i);
           switch (i)
           {
           case SIGSTOP:
@@ -809,8 +824,10 @@ void handle_signal(struct proc *p)
         }
         else
         {
+          printf("user handler pid %d starting trapframing\n", p->pid);
           uint mask_backup = p->signal_mask;
-          p->user_trapframe_backup = p->trapframe;
+          *p->user_trapframe_backup = *p->trapframe;
+          // memmove(p->user_trapframe_backup, p->trapframe, sizeof(struct trapframe));
           p->signal_mask = handler->sigmask;
 
           uint64 sigret_size = (uint64)((&sigret_end) - (&sigret_start));

@@ -123,6 +123,7 @@ void usertrapret(void)
   do
   {
     handle_signal(p);
+    // printf("handling signal pid %d\n",p->pid);
   } while (p->frozen == 1);
   ////////// Q2 //////////
 

@@ -46,4 +46,5 @@ swtch:
 sigret_start:
         li a7, SYS_sigret
         ecall
+        ret
 sigret_end:
