@@ -12,6 +12,8 @@
         "*.tcc": "c",
         "fstream": "c",
         "sstream": "c",
-        "sigaction.h": "c"
+        "sigaction.h": "c",
+        "fs.h": "c",
+        "memlayout.h": "c"
     }
 }

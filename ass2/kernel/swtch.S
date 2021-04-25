@@ -4,6 +4,7 @@
 # 
 # Save current registers in old. Load from new.	
 
+#include "syscall.h"
 
 .globl swtch
 swtch:
@@ -43,6 +44,6 @@ swtch:
 .globl sigret_start
 .globl sigret_end
 sigret_start:
-  movl $24, %eax
-  int $64
+        li a7, SYS_sigret
+        ecall
 sigret_end:
