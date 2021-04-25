@@ -39,4 +39,10 @@ swtch:
         
         ret
 
-	
+
+.globl sigret_start
+.globl sigret_end
+sigret_start:
+  movl $24, %eax
+  int $64
+sigret_end:

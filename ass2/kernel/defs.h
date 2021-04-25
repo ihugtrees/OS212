@@ -112,10 +112,12 @@ void	        sigret(void);
 int             sigkill_handler();
 int             sigcont_handler();
 int             sigstop_handler();
-
+void            handle_signal(struct proc *p);
 
 // swtch.S
 void            swtch(struct context*, struct context*);
+void            sigret_start(void);
+void            sigret_end(void);
 
 // spinlock.c
 void            acquire(struct spinlock*);

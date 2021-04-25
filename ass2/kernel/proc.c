@@ -5,6 +5,7 @@
 #include "spinlock.h"
 #include "proc.h"
 #include "defs.h"
+#include "sigaction.h"
 
 struct cpu cpus[NCPU];
 
@@ -713,7 +714,11 @@ int sigaction(int signum, const struct sigaction *act, struct sigaction *oldact)
 
 void sigret(void)
 {
-  // TODO
+  struct proc *p = myproc();
+
+  p->trapframe = p->user_trapframe_backup;
+
+  return;
 }
 
 int sigkill_handler()
@@ -743,4 +748,85 @@ int sigstop_handler()
   p->frozen = 1;
 
   return 0;
+}
+
+void handle_signal(struct proc *p)
+{
+  for (int i = 0; i < 32; i++)
+  {
+    if ((p->pending_signals >> i & 1) && !(p->signal_mask >> i & 1))
+    {
+      p->pending_signals = p->pending_signals & ~(1 << i);
+      if (p->signal_handlers[i] == (void *)SIG_IGN)
+      {
+        continue;
+      }
+      else if (p->signal_handlers[i] == SIG_DFL)
+      {
+        switch (i)
+        {
+        case SIGSTOP:
+          sigstop_handler();
+          break;
+
+        case SIGCONT:
+          sigcont_handler();
+          break;
+
+        default:
+          sigkill_handler();
+        }
+      }
+      else
+      {
+        struct sigaction *handler = (struct sigaction *)p->signal_handlers[i];
+        if (handler->sa_handler == (void *)SIG_IGN)
+        {
+          continue;
+        }
+        else if (handler->sa_handler == SIG_DFL)
+        {
+          switch (i)
+          {
+          case SIGSTOP:
+            sigstop_handler();
+            break;
+
+          case SIGCONT:
+            sigcont_handler();
+            break;
+
+          default:
+            sigkill_handler();
+            break;
+          }
+        }
+        else
+        {
+          uint mask_backup = p->signal_mask;
+          p->user_trapframe_backup = p->trapframe;
+          p->signal_mask = handler->sigmask;
+
+          uint64 sigret_size = (uint64)((&sigret_end) - (&sigret_start));
+          p->trapframe->sp -= sigret_size;
+          uint64 backup_esp = p->trapframe->sp;
+
+          memmove((void *)(p->trapframe->sp), &sigret_start, sigret_size);
+
+          p->trapframe->sp -= 4;
+          *((int *)(p->trapframe->sp)) = i;
+
+          p->trapframe->sp -= 4;
+          *((int *)(p->trapframe->sp)) = backup_esp;
+
+          p->trapframe->epc = (uint64)handler->sa_handler;
+
+          p->signal_mask = mask_backup;
+        }
+      }
+    }
+  }
+
+  if (p->frozen == 1)
+    yield();
 }
