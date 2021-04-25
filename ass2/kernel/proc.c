@@ -620,8 +620,14 @@ int kill(int pid, int signum)
   for (p = proc; p < &proc[NPROC]; p++)
   {
     acquire(&p->lock);
-    int pending = 1 << signum;
-    p->pending_signals = p->pending_signals | pending;
+    
+    if (p->pid == pid)
+    {
+      int pending = 1 << signum;
+      p->pending_signals = p->pending_signals | pending;
+      release(&p->lock);
+      return 0;
+    }
     release(&p->lock);
   }
   return -1;
