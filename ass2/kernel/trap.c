@@ -116,16 +116,15 @@ void usertrapret(void)
   x |= SSTATUS_SPIE; // enable interrupts in user mode
   w_sstatus(x);
 
-  // set S Exception Program Counter to the saved user pc.
-  w_sepc(p->trapframe->epc);
-
   ////////// Q2 //////////
   do
   {
     handle_signal(p);
-    // printf("handling signal pid %d\n",p->pid);
   } while (p->frozen == 1);
   ////////// Q2 //////////
+
+  // set S Exception Program Counter to the saved user pc.
+  w_sepc(p->trapframe->epc);
 
   // tell trampoline.S the user page table to switch to.
   uint64 satp = MAKE_SATP(p->pagetable);

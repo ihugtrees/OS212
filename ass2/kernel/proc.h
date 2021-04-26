@@ -1,3 +1,5 @@
+#include "sigaction.h"
+
 // Saved registers for kernel context switches.
 struct context
 {
@@ -123,6 +125,8 @@ struct proc
   uint pending_signals;
   uint signal_mask;
   void *signal_handlers[32];
+  uint signal_handlers_mask[32];
+  struct sigaction sigs[32];
   struct trapframe *user_trapframe_backup;
   int frozen;
 };
