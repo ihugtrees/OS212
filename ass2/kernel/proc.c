@@ -844,3 +844,8 @@ void handle_signal(struct proc *p)
   if (p->frozen == 1)
     yield();
 }
+
+int kthread_create(void (*start_func)(), void *stack);
+int kthread_id();
+void kthread_exit(int status);
+int kthread_join(int thread_id, int* status);

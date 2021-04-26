@@ -129,4 +129,7 @@ struct proc
   struct sigaction sigs[32];
   struct trapframe *user_trapframe_backup;
   int frozen;
+
+  ////////// Q3 //////////
+  #define NTHREAD 8
 };
