@@ -722,6 +722,10 @@ int sigaction(int signum, const struct sigaction *act, struct sigaction *oldact)
                              sizeof(p->signal_handlers[signum])) < 0)
     return -1;
 
+  // p->signal_handlers[signum] = kalloc();
+  // either_copyin(p->signal_handlers[signum], 1, (uint64)act, (uint64)sizeof(struct sigaction));
+
+
   copyin(p->pagetable, (char *)&p->sigs[signum], (uint64)act, sizeof(struct sigaction));
   p->signal_handlers[signum] = p->sigs[signum].sa_handler;
   p->signal_handlers_mask[signum] = p->sigs[signum].sigmask;
@@ -735,10 +739,7 @@ int sigaction(int signum, const struct sigaction *act, struct sigaction *oldact)
 void sigret(void)
 {
   struct proc *p = myproc();
-
-  // *p->trapframe = *p->user_trapframe_backup;
   memmove(p->trapframe, p->user_trapframe_backup, sizeof(struct trapframe));
-
   return;
 }
 
@@ -776,6 +777,7 @@ void handle_signal(struct proc *p)
 {
   for (int i = 0; i < 32; i++)
   {
+    printf("i: %d\n", i);
     if ((p->pending_signals >> i & 1) && !(p->signal_mask >> i & 1))
     {
       printf("handle_signal pid %d signal %d, my pid %d\n", p->pid, i, myproc()->pid);
@@ -838,28 +840,22 @@ void handle_signal(struct proc *p)
           uint mask_backup = p->signal_mask;
           memmove(p->user_trapframe_backup, p->trapframe, sizeof(struct trapframe));
           printf("after backup trap\n");
+          // p->signal_mask = ((struct sigaction*) p->signal_handlers[i])->sigmask;
           p->signal_mask = p->signal_handlers_mask[i];
-
-          uint64 sigret_size = (uint64)((uint64)&sigret_end - (uint64)&sigret_start);
-          printf("after sigret size\n");
-          p->trapframe->sp -= sigret_size;
-          // uint64 backup_esp = p->trapframe->sp;
-
-          // memmove((void *)p->trapframe->sp, &sigret_start, sigret_size);
-          copyout(p->pagetable, p->trapframe->sp, (char *)&sigret_start, sigret_size);
-          printf("after sigret injection\n");
-
-          // p->trapframe->sp -= sizeof(uint64);
-          // *((int *)(p->trapframe->sp)) = i;
-          // p->trapframe->sp -= 8;
-          // *((int *)(p->trapframe->sp)) = backup_esp;
-
-          p->trapframe->a0 = i;
-          p->trapframe->ra = p->trapframe->sp;
 
           printf("befor epc\n");
           p->trapframe->epc = (uint64)p->signal_handlers[i];
           printf("after epc\n");
+
+          uint64 sigret_size = (uint64)((uint64)&sigret_end - (uint64)&sigret_start);
+          printf("after sigret size\n");
+          p->trapframe->sp -= sigret_size;
+          copyout(p->pagetable, p->trapframe->sp, (char *)&sigret_start, sigret_size);
+          printf("after sigret injection\n");
+
+          p->trapframe->a0 = i;
+          p->trapframe->ra = p->trapframe->sp;
+
           p->signal_mask = mask_backup;
         }
       }
