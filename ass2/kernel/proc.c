@@ -631,7 +631,7 @@ int kill(int pid, int signum)
       int pending = 1 << signum;
       p->pending_signals = p->pending_signals | pending;
       release(&p->lock);
-      printf("kill pid %d signum %d my pid %d\n", pid, signum, myproc()->pid);
+      // printf("kill pid %d signum %d my pid %d\n", pid, signum, myproc()->pid);
       return 0;
     }
     release(&p->lock);
@@ -718,6 +718,7 @@ int sigaction(int signum, const struct sigaction *act, struct sigaction *oldact)
   struct proc *p = myproc();
   if (signum < 0 || signum > 31 || act == 0 || signum == SIGKILL || signum == SIGSTOP)
     return -1;
+
   if (oldact != 0 && copyout(p->pagetable, (uint64)oldact, (char *)&p->signal_handlers[signum],
                              sizeof(p->signal_handlers[signum])) < 0)
     return -1;
@@ -725,13 +726,12 @@ int sigaction(int signum, const struct sigaction *act, struct sigaction *oldact)
   // p->signal_handlers[signum] = kalloc();
   // either_copyin(p->signal_handlers[signum], 1, (uint64)act, (uint64)sizeof(struct sigaction));
 
-
   copyin(p->pagetable, (char *)&p->sigs[signum], (uint64)act, sizeof(struct sigaction));
   p->signal_handlers[signum] = p->sigs[signum].sa_handler;
   p->signal_handlers_mask[signum] = p->sigs[signum].sigmask;
 
-  printf("sigaction : %p,mask %d\n", p->signal_handlers[signum], p->signal_handlers_mask[signum]);
-  printf("sigs : %p,mask %d\n", p->sigs[signum].sa_handler, p->sigs[signum].sigmask);
+  // printf("sigaction : %p,mask %d\n", p->signal_handlers[signum], p->signal_handlers_mask[signum]);
+  // printf("sigs : %p,mask %d\n", p->sigs[signum].sa_handler, p->sigs[signum].sigmask);
 
   return 0;
 }
@@ -747,7 +747,7 @@ int sigkill_handler()
 {
   struct proc *p = myproc();
   p->killed = 1;
-  printf("sigkill_handler pid %d signum %d\n", p->pid, 9);
+  // printf("sigkill_handler pid %d signum %d\n", p->pid, 9);
   if (p->state == SLEEPING)
   {
     // Wake process from sleep().
@@ -777,19 +777,13 @@ void handle_signal(struct proc *p)
 {
   for (int i = 0; i < 32; i++)
   {
-    printf("i: %d\n", i);
+    // printf("i: %d\n", i);
     if ((p->pending_signals >> i & 1) && !(p->signal_mask >> i & 1))
     {
-      printf("handle_signal pid %d signal %d, my pid %d\n", p->pid, i, myproc()->pid);
+      // printf("handle_signal pid %d signal %d, my pid %d\n", p->pid, i, myproc()->pid);
       p->pending_signals = p->pending_signals & ~(1 << i);
-      if (p->signal_handlers[i] == (void *)SIG_IGN)
+      if (p->signal_handlers[i] == (void *)SIG_DFL)
       {
-        printf("kernel ignore\n");
-        continue;
-      }
-      else if (p->signal_handlers[i] == (void *)SIG_DFL)
-      {
-        printf("kernel default\n");
         switch (i)
         {
         case SIGSTOP:
@@ -804,60 +798,45 @@ void handle_signal(struct proc *p)
           sigkill_handler();
         }
       }
+      else if (p->signal_handlers[i] == (void *)SIG_IGN)
+      {
+        continue;
+      }
+      else if (p->signal_handlers[i] == (void *)SIGSTOP)
+      {
+        sigstop_handler();
+      }
+      else if (p->signal_handlers[i] == (void *)SIGCONT)
+      {
+        sigcont_handler();
+      }
+      else if (p->signal_handlers[i] == (void *)SIGKILL)
+      {
+        sigkill_handler();
+      }
       else
       {
-        // printf("user hadnler got handler pid %d signal %d\n", p->pid, i);
-        // struct sigaction *handler = (struct sigaction *)p->signal_handlers[i];
-        // uint64 handler_func = (uint64)handler->sa_handler;
-        // copyin(p->pagetable, (char *)&handler_func, (uint64)&handler->sa_handler, sizeof(uint64));
-        // printf("user hadnler got handler pid %d signal %d funct ptr %p\n", p->pid, i, handler_func);
-        if (p->signal_handlers[i] == (void *)SIG_IGN)
-        {
-          printf("user hadnler ignore pid %d signal %d\n", p->pid, i);
-          continue;
-        }
-        else if (p->signal_handlers[i] == (void *)SIG_DFL)
-        {
-          printf("user hadnler default pid %d signal %d\n", p->pid, i);
-          switch (i)
-          {
-          case SIGSTOP:
-            sigstop_handler();
-            break;
+        //printf("user handler pid %d starting trapframing\n", p->pid);
+        uint mask_backup = p->signal_mask;
+        memmove(p->user_trapframe_backup, p->trapframe, sizeof(struct trapframe));
+        //printf("after backup trap\n");
+        // p->signal_mask = ((struct sigaction*) p->signal_handlers[i])->sigmask;
+        p->signal_mask = p->signal_handlers_mask[i];
 
-          case SIGCONT:
-            sigcont_handler();
-            break;
+        //printf("befor epc\n");
+        p->trapframe->epc = (uint64)p->signal_handlers[i];
+        //printf("after epc\n");
 
-          default:
-            sigkill_handler();
-            break;
-          }
-        }
-        else
-        {
-          printf("user handler pid %d starting trapframing\n", p->pid);
-          uint mask_backup = p->signal_mask;
-          memmove(p->user_trapframe_backup, p->trapframe, sizeof(struct trapframe));
-          printf("after backup trap\n");
-          // p->signal_mask = ((struct sigaction*) p->signal_handlers[i])->sigmask;
-          p->signal_mask = p->signal_handlers_mask[i];
+        uint64 sigret_size = (uint64)((uint64)&sigret_end - (uint64)&sigret_start);
+        //printf("after sigret size\n");
+        p->trapframe->sp -= sigret_size;
+        copyout(p->pagetable, p->trapframe->sp, (char *)&sigret_start, sigret_size);
+        //printf("after sigret injection\n");
 
-          printf("befor epc\n");
-          p->trapframe->epc = (uint64)p->signal_handlers[i];
-          printf("after epc\n");
+        p->trapframe->a0 = i;
+        p->trapframe->ra = p->trapframe->sp;
 
-          uint64 sigret_size = (uint64)((uint64)&sigret_end - (uint64)&sigret_start);
-          printf("after sigret size\n");
-          p->trapframe->sp -= sigret_size;
-          copyout(p->pagetable, p->trapframe->sp, (char *)&sigret_start, sigret_size);
-          printf("after sigret injection\n");
-
-          p->trapframe->a0 = i;
-          p->trapframe->ra = p->trapframe->sp;
-
-          p->signal_mask = mask_backup;
-        }
+        p->signal_mask = mask_backup;
       }
     }
   }
