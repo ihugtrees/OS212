@@ -9,6 +9,7 @@ struct sleeplock;
 struct stat;
 struct superblock;
 struct sigaction;
+struct thread;
 
 // bio.c
 void            binit(void);
@@ -113,6 +114,14 @@ int             sigkill_handler();
 int             sigcont_handler();
 int             sigstop_handler();
 void            handle_signal(struct proc *p);
+int             kthread_create(void (*start_func)(), void *stack);
+int             kthread_id();
+void            kthread_exit(int status);
+int             kthread_join(int thread_id, int* status);
+void            freethread(struct thread *t);
+void            kill_all_threads(struct proc *p);
+struct thread * mythread(void);
+
 
 // swtch.S
 void            swtch(struct context*, struct context*);

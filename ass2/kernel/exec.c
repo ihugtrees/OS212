@@ -19,6 +19,9 @@ int exec(char *path, char **argv)
   struct proghdr ph;
   pagetable_t pagetable = 0, oldpagetable;
   struct proc *p = myproc();
+  struct thread *t = mythread();
+  
+  kill_all_threads(p);
 
   begin_op();
 
@@ -62,7 +65,7 @@ int exec(char *path, char **argv)
   end_op();
   ip = 0;
 
-  p = myproc();
+
   uint64 oldsz = p->sz;
 
   // Allocate two pages at the next page boundary.
@@ -102,7 +105,7 @@ int exec(char *path, char **argv)
   // arguments to user main(argc, argv)
   // argc is returned via the system call return
   // value, which goes in a0.
-  p->trapframe->a1 = sp;
+  t->trapframe->a1 = sp;
 
   // Save program name for debugging.
   for (last = s = path; *s; s++)
@@ -114,8 +117,8 @@ int exec(char *path, char **argv)
   oldpagetable = p->pagetable;
   p->pagetable = pagetable;
   p->sz = sz;
-  p->trapframe->epc = elf.entry; // initial program counter = main
-  p->trapframe->sp = sp;         // initial stack pointer
+  t->trapframe->epc = elf.entry; // initial program counter = main
+  t->trapframe->sp = sp;         // initial stack pointer
   
   for (int i = 0; i < 32; i++)
   {
