@@ -175,7 +175,6 @@ void syscall(void)
       {
         printf("\n%d: syscall %s NULL -> %d\n", p->pid, sysNames[num], p->trapframe->a0);
       }
-
       else if (num == SYS_kill || num == SYS_sbrk)
       {
         printf("\n%d: syscall %s %d -> %d\n", p->pid, sysNames[num], arg0, p->trapframe->a0);

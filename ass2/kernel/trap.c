@@ -54,9 +54,8 @@ void usertrap(void)
 
     if (t->killed)
       kthread_exit(-1); //TODO
-    if(p->killed)
+    if (p->killed)
       exit(-1);
-
 
     // sepc points to the ecall instruction,
     // but we want to return to the next instruction.
@@ -79,10 +78,10 @@ void usertrap(void)
     p->killed = 1;
   }
 
-    if (t->killed)
-      kthread_exit(-1);
-    if(p->killed)
-      exit(-1);
+  if (t->killed)
+    kthread_exit(-1);
+  if (p->killed)
+    exit(-1);
 
   // give up the CPU if this is a timer interrupt.
   if (which_dev == 2)
@@ -143,7 +142,7 @@ void usertrapret(void)
   // switches to the user page table, restores user registers,
   // and switches to user mode with sret.
   uint64 fn = TRAMPOLINE + (userret - trampoline);
-  ((void (*)(uint64, uint64))fn)(TRAPFRAME, satp);
+  ((void (*)(uint64, uint64))fn)(TRAPFRAME + (sizeof(struct trapframe)) * (t - p->threads), satp);
 }
 
 // interrupts and exceptions from kernel code go here via kernelvec,
