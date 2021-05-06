@@ -10,7 +10,6 @@
 
 #define PGSIZE 4096 // bytes per page
 
-
 int x = 5;
 
 void c(int a)
@@ -312,73 +311,76 @@ void modify_test()
         printf(" [finished]\n\n");
     }
 }
-void sbrkmuch(char *s)
+
+void sbrkmuch()
 {
-  enum
-  {
-    BIG = 100 * 1024 * 1024
-  };
-  char *c, *oldbrk, *a, *lastaddr, *p;
-  uint64 amt;
+    enum
+    {
+        BIG = 100 * 1024 * 1024
+    };
+    char *c, *oldbrk, *a, *lastaddr, *p;
+    uint64 amt;
 
-  oldbrk = sbrk(0);
+    oldbrk = sbrk(0);
 
-  // can one grow address space to something big?
-  a = sbrk(0);
-  amt = BIG - (uint64)a;
-  p = sbrk(amt);
-  if (p != a)
-  {
-    printf("%s: sbrk test failed to grow big address space; enough phys mem?\n", s);
-    exit(1);
-  }
+    // can one grow address space to something big?
+    a = sbrk(0);
+    amt = BIG - (uint64)a;
+    p = sbrk(amt);
+    if (p != a)
+    {
+        printf("sbrk test failed to grow big address space; enough phys mem?\n");
+        exit(1);
+    }
 
-  // touch each page to make sure it exists.
-  char *eee = sbrk(0);
-  for (char *pp = a; pp < eee; pp += 4096)
-    *pp = 1;
+    // touch each page to make sure it exists.
+    char *eee = sbrk(0);
+    for (char *pp = a; pp < eee; pp += 4096)
+        *pp = 1;
 
-  lastaddr = (char *)(BIG - 1);
-  *lastaddr = 99;
+    lastaddr = (char *)(BIG - 1);
+    *lastaddr = 99;
 
-  // can one de-allocate?
-  a = sbrk(0);
-  c = sbrk(-PGSIZE);
-  if (c == (char *)0xffffffffffffffffL)
-  {
-    printf("%s: sbrk could not deallocate\n", s);
-    exit(1);
-  }
-  c = sbrk(0);
-  if (c != a - PGSIZE)
-  {
-    printf("%s: sbrk deallocation produced wrong address, a %x c %x\n", s, a, c);
-    exit(1);
-  }
+    // can one de-allocate?
+    a = sbrk(0);
+    c = sbrk(-PGSIZE);
+    if (c == (char *)0xffffffffffffffffL)
+    {
+        printf("sbrk could not deallocate\n");
+        exit(1);
+    }
+    c = sbrk(0);
+    if (c != a - PGSIZE)
+    {
+        printf("sbrk deallocation produced wrong address, a %x c %x\n", a, c);
+        exit(1);
+    }
 
-  // can one re-allocate that page?
-  a = sbrk(0);
-  c = sbrk(PGSIZE);
-  if (c != a || sbrk(0) != a + PGSIZE)
-  {
-    printf("%s: sbrk re-allocation failed, a %x c %x\n", s, a, c);
-    exit(1);
-  }
-  if (*lastaddr == 99)
-  {
-    // should be zero
-    printf("%s: sbrk de-allocation didn't really deallocate\n", s);
-    exit(1);
-  }
+    // can one re-allocate that page?
+    a = sbrk(0);
+    c = sbrk(PGSIZE);
+    if (c != a || sbrk(0) != a + PGSIZE)
+    {
+        printf("sbrk re-allocation failed, a %x c %x\n", a, c);
+        exit(1);
+    }
+    if (*lastaddr == 99)
+    {
+        // should be zero
+        printf("sbrk de-allocation didn't really deallocate\n");
+        exit(1);
+    }
 
-  a = sbrk(0);
-  c = sbrk(-(sbrk(0) - oldbrk));
-  if (c != a)
-  {
-    printf("%s: sbrk downsize failed, a %x c %x\n", s, a, c);
-    exit(1);
-  }
+    a = sbrk(0);
+    c = sbrk(-(sbrk(0) - oldbrk));
+    if (c != a)
+    {
+        printf("sbrk downsize failed, a %x c %x\n", a, c);
+        exit(1);
+    }
+    printf("sbrk okay ahusharmuta\n");
 }
+
 int main(int argc, char *argv[])
 {
     // igor_test();
@@ -390,7 +392,7 @@ int main(int argc, char *argv[])
     // inner_mask_test();
     // old_act_test();
     // modify_test();
-    sbrkmuch("sbrk");
+    // sbrkmuch("sbrk");
 
     exit(0);
 }

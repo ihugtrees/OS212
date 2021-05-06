@@ -145,8 +145,6 @@ struct thread *allocthread(struct proc *p)
     // struct thread *cur_thread = mythread();
     for (t = p->threads; t < &p->threads[NTHREAD]; t++)
     {
-        // if(t == cur_thread)
-        //   continue;
         if (t->state == UNUSED)
         {
             goto found;
@@ -154,8 +152,7 @@ struct thread *allocthread(struct proc *p)
         //        else if (t->state == ZOMBIE) {
         //            freethread(t);
         //            goto found;
-        //        } else {
-        //        }
+        //        } 
     }
     return 0;
 
@@ -181,11 +178,10 @@ found:
 
 void alloc_trapframes(struct proc *p, struct thread *t)
 {
-    void *start;
-    void *b_start;
+    void *main_trapframe;
+    void *backup_trapframe;
 
-    if (((start = (struct trapframe *)kalloc()) == 0) ||
-        ((b_start = (struct trapframe *)kalloc()) == 0))
+    if (((main_trapframe = (struct trapframe *)kalloc()) == 0) || ((backup_trapframe = (struct trapframe *)kalloc()) == 0))
     {
         freeproc(p);
         release(&p->lock);
@@ -194,8 +190,8 @@ void alloc_trapframes(struct proc *p, struct thread *t)
     int i = 0;
     for (t = p->threads; t < &p->threads[NTHREAD]; t++)
     {
-        t->trapframe = start + sizeof(struct trapframe) * i;
-        t->user_trapframe_backup = b_start + sizeof(struct trapframe) * i;
+        t->trapframe = main_trapframe + sizeof(struct trapframe) * i;
+        t->user_trapframe_backup = backup_trapframe + sizeof(struct trapframe) * i;
         i++;
     }
 }
@@ -983,7 +979,9 @@ int kthread_create(void (*start_func)(), void *stack)
 {
     // struct proc *p = myproc();
     // struct thread *t = allocthread(p);
-    // TODO stufff
+    // struct thread *currthread = mythread();
+
+    
     return 0;
 }
 
