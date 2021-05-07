@@ -526,12 +526,14 @@ void exit(int status)
     acquire(&t->lock);
 
     //    kill_all_threads(p);
-    struct thread *tmp;
-    for (tmp = p->threads; tmp < &p->threads[NTHREAD]; tmp++)
+    struct thread *thread;
+    for (thread = p->threads; thread < &p->threads[NTHREAD]; thread++)
     {
-        tmp->state = ZOMBIE;
+        if(thread != t)
+            thread->killed = 1;
     }
     p->xstate = status;
+    t->state = ZOMBIE;
     p->state = ZOMBIE;
 
     release(&wait_lock);
@@ -985,7 +987,7 @@ int kthread_create(void (*start_func)(), void *stack)
     t->trapframe->epc = (uint64) start_func;
     t->trapframe->sp = (uint64) stack + MAX_STACK_SIZE - 16;
     t->state = RUNNABLE;
-    return 0;
+    return t->tid;
 }
 
 // Returns the current thread id

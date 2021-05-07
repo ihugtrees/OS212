@@ -18,7 +18,7 @@
 #ifndef _SEMAPHORE_H
 #define _SEMAPHORE_H	1
 
-#include <features.h>
+#include <Csemaphore.h>
 #include <sys/types.h>
 #ifdef __USE_XOPEN2K
 # include <bits/types/struct_timespec.h>
