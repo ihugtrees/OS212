@@ -1145,12 +1145,30 @@ void kill_all_threads(struct proc *p)
 }
 
 int
+ccsem_alloc(int initial_value){
+    for(int i=0; i<MAX_BSEM; i++){
+        if(binsems[i].free == 0)
+            continue;
+        acquire(&binsems[i].lock);
+        binsems[i].free = 0;
+        binsems[i].max_value = initial_value;
+        binsems[i].value = initial_value;
+        release(&binsems[i].lock);
+        return binsems[i].descriptor;
+    }
+
+    return -1;
+}
+
+int
 bsem_alloc(void){
     for(int i=0; i<MAX_BSEM; i++){
         if(binsems[i].free == 0)
             continue;
         acquire(&binsems[i].lock);
         binsems[i].free = 0;
+        binsems[i].max_value = 1;
+        binsems[i].value = 1;
         release(&binsems[i].lock);
         return binsems[i].descriptor;
     }
@@ -1162,6 +1180,7 @@ void
 bsem_free(int descriptor){
     acquire(&binsems[descriptor].lock);
     binsems[descriptor].free = 1;
+    binsems[descriptor].value = binsems[descriptor].max_value;
     release(&binsems[descriptor].lock);
 }
 
@@ -1170,6 +1189,7 @@ bsem_down(int descriptor){
     acquire(&binsems[descriptor].lock);
     for(;;){
         if(binsems[descriptor].value > 0){
+            printf("locks: %d\n", binsems[descriptor].value);
             binsems[descriptor].value--;
             release(&binsems[descriptor].lock);
             return;
@@ -1186,8 +1206,8 @@ bsem_down(int descriptor){
 void
 bsem_up(int descriptor){
     acquire(&binsems[descriptor].lock);
-    if(binsems[descriptor].value == 0)
-        binsems[descriptor].value = 1;
+    if(binsems[descriptor].value < binsems[descriptor].max_value)
+        binsems[descriptor].value++;
     release(&binsems[descriptor].lock);
     wakeup(&binsems[descriptor]);
 }

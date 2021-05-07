@@ -3,7 +3,8 @@
 struct binsem{
     int free;
     int descriptor;
-    int value;
+    volatile int value;
+    int max_value;
     struct spinlock lock;
     struct spinlock wait_lock;
 };
