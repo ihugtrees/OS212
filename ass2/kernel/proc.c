@@ -529,15 +529,15 @@ void exit(int status)
     struct thread *t;
     for (t = p->threads; t < &p->threads[NTHREAD]; t++)
     {
-        if (t != currthread && t->state != ZOMBIE && t->state != UNUSED)
-        {
-            acquire(&t->lock);
-            t->killed = 1;
-            release(&t->lock);
-        }
-        // thread->state = ZOMBIE;
+        // if (t != currthread && t->state != ZOMBIE && t->state != UNUSED)
+        // {
+        //     acquire(&t->lock);
+        //     t->killed = 1;
+        //     release(&t->lock);
+        // }
+        t->state = ZOMBIE;
     }
-    currthread->state = ZOMBIE;
+    // currthread->state = ZOMBIE;
     p->xstate = status;
     p->state = ZOMBIE;
 
@@ -1007,14 +1007,10 @@ void kthread_exit(int status)
     struct thread *curthread = mythread();
     struct thread *t;
 
-    // if (p == initproc)
-    //   panic("init exiting");
-
     // Parent might be sleeping in wait().
     wakeup(curthread->parent);
     acquire(&curthread->lock);
 
-    // p->xstate = status;
     curthread->state = ZOMBIE;
     int allDead = 1;
     for (t = p->threads; t < &p->threads[NTHREAD]; t++)
@@ -1098,6 +1094,8 @@ void kill_all_threads(struct proc *p)
     struct thread *cur_thread = mythread();
     struct thread *t;
 
+    // for (;;)
+    // {
     for (t = p->threads; t < &p->threads[NTHREAD]; t++)
     {
         if (t == cur_thread)
@@ -1111,6 +1109,8 @@ void kill_all_threads(struct proc *p)
         }
         release(&t->lock);
     }
+    // sleep(&p->,);
+    // }
 
     int not_all_dead = 1;
     while (not_all_dead)
