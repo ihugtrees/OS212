@@ -10,6 +10,7 @@ struct stat;
 struct superblock;
 struct sigaction;
 struct thread;
+struct binsem;
 
 // bio.c
 void            binit(void);

@@ -5,6 +5,7 @@
 #include "spinlock.h"
 #include "proc.h"
 #include "defs.h"
+#include "binsem.h"
 // #include "sigaction.h"
 
 struct cpu cpus[NCPU];
@@ -18,6 +19,12 @@ struct spinlock pid_lock;
 // Q3 //
 int nexttid = 1;
 struct spinlock tid_lock;
+
+// Q4 //
+
+struct binsem binsems[MAX_BSEM];
+
+// Q4 //
 
 extern void forkret(void);
 
@@ -55,6 +62,13 @@ void procinit(void)
 {
     struct proc *p;
 
+    for(int i=0; i<MAX_BSEM; i++){
+        binsems[i].descriptor = i;
+        initlock(&binsems[i].lock, "binsem");
+        initlock(&binsems[i].wait_lock, "binsem wait lock");
+        binsems[i].value = 1;
+        binsems[i].free = 1;
+    }
     initlock(&pid_lock, "nextpid");
     initlock(&wait_lock, "wait_lock");
     for (p = proc; p < &proc[NPROC]; p++)
@@ -1132,14 +1146,48 @@ void kill_all_threads(struct proc *p)
 
 int
 bsem_alloc(void){
-    return 1;
+    for(int i=0; i<MAX_BSEM; i++){
+        if(binsems[i].free == 0)
+            continue;
+        acquire(&binsems[i].lock);
+        binsems[i].free = 0;
+        release(&binsems[i].lock);
+        return binsems[i].descriptor;
+    }
+
+    return -1;
 }
 
 void
-bsem_free(int descriptor){}
+bsem_free(int descriptor){
+    acquire(&binsems[descriptor].lock);
+    binsems[descriptor].free = 1;
+    release(&binsems[descriptor].lock);
+}
 
 void
-bsem_down(int descriptor){}
+bsem_down(int descriptor){
+    acquire(&binsems[descriptor].lock);
+    for(;;){
+        if(binsems[descriptor].value > 0){
+            binsems[descriptor].value--;
+            release(&binsems[descriptor].lock);
+            return;
+        }
+        else
+        {
+            sleep(&binsems[descriptor], &binsems[descriptor].lock);
+        }
+    }
+
+
+}
 
 void
-bsem_up(int descriptor){}
+bsem_up(int descriptor){
+    acquire(&binsems[descriptor].lock);
+    if(binsems[descriptor].value == 0)
+        binsems[descriptor].value = 1;
+    release(&binsems[descriptor].lock);
+    wakeup(&binsems[descriptor]);
+}
