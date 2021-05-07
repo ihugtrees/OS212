@@ -152,7 +152,7 @@ struct thread *allocthread(struct proc *p)
         //        else if (t->state == ZOMBIE) {
         //            freethread(t);
         //            goto found;
-        //        } 
+        //        }
     }
     return 0;
 
@@ -494,7 +494,7 @@ void reparent(struct proc *p)
 void exit(int status)
 {
     struct proc *p = myproc();
-    struct thread *t = mythread();
+    struct thread *currthread = mythread();
 
     if (p == initproc)
         panic("init exiting");
@@ -523,17 +523,22 @@ void exit(int status)
     // Parent might be sleeping in wait().
     wakeup(p->parent);
 
-    acquire(&t->lock);
+    acquire(&currthread->lock);
 
-    //    kill_all_threads(p);
-    struct thread *thread;
-    for (thread = p->threads; thread < &p->threads[NTHREAD]; thread++)
+    // kill_all_threads(p);
+    struct thread *t;
+    for (t = p->threads; t < &p->threads[NTHREAD]; t++)
     {
-        if(thread != t)
-            thread->killed = 1;
+        if (t != currthread && t->state != ZOMBIE && t->state != UNUSED)
+        {
+            acquire(&t->lock);
+            t->killed = 1;
+            release(&t->lock);
+        }
+        // thread->state = ZOMBIE;
     }
+    currthread->state = ZOMBIE;
     p->xstate = status;
-    t->state = ZOMBIE;
     p->state = ZOMBIE;
 
     release(&wait_lock);
@@ -982,10 +987,10 @@ int kthread_create(void (*start_func)(), void *stack)
     struct proc *p = myproc();
     struct thread *t = allocthread(p);
     struct thread *currthread = mythread();
-    
+
     memmove(t->trapframe, currthread->trapframe, sizeof(struct trapframe));
-    t->trapframe->epc = (uint64) start_func;
-    t->trapframe->sp = (uint64) stack + MAX_STACK_SIZE - 16;
+    t->trapframe->epc = (uint64)start_func;
+    t->trapframe->sp = (uint64)stack + MAX_STACK_SIZE - 16;
     t->state = RUNNABLE;
     return t->tid;
 }
@@ -1102,7 +1107,7 @@ void kill_all_threads(struct proc *p)
         {
             t->killed = 1;
             if (t->state == SLEEPING)
-                t->state = RUNNING;
+                t->state = RUNNABLE;
         }
         release(&t->lock);
     }
