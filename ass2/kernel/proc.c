@@ -1129,3 +1129,17 @@ void kill_all_threads(struct proc *p)
         }
     }
 }
+
+int
+bsem_alloc(void){
+    return 1;
+}
+
+void
+bsem_free(int descriptor){}
+
+void
+bsem_down(int descriptor){}
+
+void
+bsem_up(int descriptor){}
