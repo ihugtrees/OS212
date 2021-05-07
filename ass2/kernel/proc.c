@@ -977,11 +977,14 @@ void handle_signal(struct proc *p)
 
 int kthread_create(void (*start_func)(), void *stack)
 {
-    // struct proc *p = myproc();
-    // struct thread *t = allocthread(p);
-    // struct thread *currthread = mythread();
-
+    struct proc *p = myproc();
+    struct thread *t = allocthread(p);
+    struct thread *currthread = mythread();
     
+    memmove(t->trapframe, currthread->trapframe, sizeof(struct trapframe));
+    t->trapframe->epc = (uint64) start_func;
+    t->trapframe->sp = (uint64) stack + MAX_STACK_SIZE - 16;
+    t->state = RUNNABLE;
     return 0;
 }
 
