@@ -10,6 +10,7 @@ struct stat;
 struct superblock;
 struct sigaction;
 struct thread;
+struct binsem;
 
 // bio.c
 void            binit(void);
@@ -121,6 +122,11 @@ int             kthread_join(int thread_id, int* status);
 void            freethread(struct thread *t);
 void            kill_all_threads(struct proc *p);
 struct thread * mythread(void);
+int             bsem_alloc(void);
+void            bsem_free(int);
+void            bsem_down(int);
+void            bsem_up(int);
+
 
 
 // swtch.S
