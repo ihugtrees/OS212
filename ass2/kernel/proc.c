@@ -19,6 +19,7 @@ struct spinlock pid_lock;
 // Q3 //
 int nexttid = 1;
 struct spinlock tid_lock;
+struct spinlock all_dead_lock;
 
 // Q4 //
 
@@ -69,6 +70,8 @@ void procinit(void)
         binsems[i].value = 1;
         binsems[i].free = 1;
     }
+    initlock(&tid_lock, "nexttid");
+    initlock(&all_dead_lock, "all dead");
     initlock(&pid_lock, "nextpid");
     initlock(&wait_lock, "wait_lock");
     for (p = proc; p < &proc[NPROC]; p++)
@@ -302,7 +305,6 @@ freeproc(struct proc *p)
     p->pending_signals = 0;
     p->signal_mask = 0;
 
-    p->state = UNUSED;
     struct thread *t;
     int i = 0;
     for (t = p->threads; t < &p->threads[NTHREAD]; t++)
@@ -317,6 +319,7 @@ freeproc(struct proc *p)
         }
         freethread(t);
     }
+    p->state = UNUSED;
 }
 
 // Create a user page table for a given process,
@@ -536,26 +539,58 @@ void exit(int status)
 
     // Parent might be sleeping in wait().
     wakeup(p->parent);
+    p->killed = 1;
 
-    acquire(&currthread->lock);
+    // acquire(&currthread->lock);
 
     // kill_all_threads(p);
-    struct thread *t;
-    for (t = p->threads; t < &p->threads[NTHREAD]; t++)
-    {
-        // if (t != currthread && t->state != ZOMBIE && t->state != UNUSED)
-        // {
-        //     acquire(&t->lock);
-        //     t->killed = 1;
-        //     release(&t->lock);
-        // }
-        t->state = ZOMBIE;
+    // struct thread *t;
+    // for (t = p->threads; t < &p->threads[NTHREAD]; t++)
+    // {
+    //     // if (t != currthread && t->state != ZOMBIE && t->state != UNUSED)
+    //     // {
+    //     //     acquire(&t->lock);
+    //     //     t->killed = 1;
+    //     //     release(&t->lock);
+    //     // }
+    //     t->state = ZOMBIE;
+    // }
+    while(1){
+        acquire(&all_dead_lock);
+        int allDead = 1;
+        struct thread *t;
+        for (t = myproc()->threads; t < &myproc()->threads[NTHREAD]; t++)
+        {
+            if (t != currthread)
+            {
+                acquire(&t->lock);
+                if (t->state != UNUSED && t->state != ZOMBIE)
+                {
+                    allDead = 0;
+                }
+                if(t->state == ZOMBIE)
+                    freethread(t);
+                release(&t->lock);
+            }
+        }
+        release(&all_dead_lock);
+        if(allDead == 0){
+            // printf("exit: %d\n", mythread()->tid);
+            sleep(&all_dead_lock, &wait_lock);
+        }
+        else{
+            break;
+        }
     }
-    // currthread->state = ZOMBIE;
+    
+    acquire(&currthread->lock);
+    currthread->state = ZOMBIE;
     p->xstate = status;
     p->state = ZOMBIE;
 
     release(&wait_lock);
+
+    wakeup(p->parent);
 
     // Jump into the scheduler, never to return.
     sched();
@@ -612,6 +647,7 @@ int wait(uint64 addr)
         }
 
         // Wait for a child to exit.
+        // printf("wait: %d\n", mythread()->tid);
         sleep(p, &wait_lock); //DOC: wait-sleep
     }
 }
@@ -647,6 +683,7 @@ void scheduler(void)
                     // before jumping back to us.
                     t->state = RUNNING;
                     c->proc = p;
+                    // printf("proc running/thread running: %d/%d\n", p->pid, t->tid);
                     c->thread = t;
                     swtch(&c->context, &t->context);
 
@@ -739,6 +776,8 @@ void sleep(void *chan, struct spinlock *lk)
     t->chan = chan;
     t->state = SLEEPING;
 
+    // printf("sleep: %d\n", mythread()->tid);
+
     sched();
 
     // Tidy up.
@@ -758,9 +797,9 @@ void wakeup(void *chan)
 
     for (p = proc; p < &proc[NPROC]; p++)
     {
-        if (p != myproc())
-        {
-            acquire(&p->lock);
+        // if (p != myproc())
+        // {
+            // acquire(&p->lock);
             for (t = p->threads; t < &p->threads[NTHREAD]; t++)
             {
                 if (t != mythread())
@@ -773,8 +812,8 @@ void wakeup(void *chan)
                     release(&t->lock);
                 }
             }
-            release(&p->lock);
-        }
+            // release(&p->lock);
+        // }
     }
 }
 
@@ -999,13 +1038,17 @@ void handle_signal(struct proc *p)
 int kthread_create(void (*start_func)(), void *stack)
 {
     struct proc *p = myproc();
-    struct thread *t = allocthread(p);
+    struct thread *t;
     struct thread *currthread = mythread();
+
+    if((t = allocthread(p)) == 0)
+    return -1;
 
     memmove(t->trapframe, currthread->trapframe, sizeof(struct trapframe));
     t->trapframe->epc = (uint64)start_func;
     t->trapframe->sp = (uint64)stack + MAX_STACK_SIZE - 16;
     t->state = RUNNABLE;
+    // printf("newly thread (pid/tid): %d/%d\n", p->pid, t->tid);
     return t->tid;
 }
 
@@ -1022,10 +1065,7 @@ void kthread_exit(int status)
     struct thread *t;
 
     // Parent might be sleeping in wait().
-    wakeup(curthread->parent);
-    acquire(&curthread->lock);
-
-    curthread->state = ZOMBIE;
+    acquire(&all_dead_lock);
     int allDead = 1;
     for (t = p->threads; t < &p->threads[NTHREAD]; t++)
     {
@@ -1034,17 +1074,29 @@ void kthread_exit(int status)
             acquire(&t->lock);
             if (t->state != UNUSED && t->state != ZOMBIE)
             {
+                release(&t->lock);
                 allDead = 0;
+                break;
             }
             release(&t->lock);
         }
     }
+
+    acquire(&curthread->lock);
+    curthread->state = ZOMBIE;
     release(&curthread->lock);
+
+    release(&all_dead_lock);
+    acquire(&wait_lock);
+    wakeup(myproc());
+    wakeup(&all_dead_lock);
+    release(&wait_lock);
 
     if (allDead)
     {
-        exit(-1);
+        exit(status);
     }
+
 
     acquire(&curthread->lock);
     // Jump into the scheduler, never to return.
@@ -1059,7 +1111,7 @@ int kthread_join(int thread_id, int *status)
     struct thread *t;
     int tid;
 
-    if (thread_id == curthread->tid || thread_id < 0 || thread_id > 7)
+    if (thread_id == curthread->tid || thread_id < 0)
         return -1;
 
     acquire(&wait_lock);
@@ -1098,21 +1150,23 @@ int kthread_join(int thread_id, int *status)
         }
 
         // Wait for a child to exit.
-        sleep(curthread, &wait_lock); //DOC: wait-sleep
+
+        // printf("join: %d\n", t->tid);
+        sleep(myproc(), &wait_lock); //DOC: wait-sleep
     }
 }
 
 // kill all thread and wait for them to die.
 void kill_all_threads(struct proc *p)
 {
-    struct thread *cur_thread = mythread();
+    struct thread *curthread = mythread();
     struct thread *t;
 
     // for (;;)
     // {
     for (t = p->threads; t < &p->threads[NTHREAD]; t++)
     {
-        if (t == cur_thread)
+        if (t == curthread)
             continue;
         acquire(&t->lock);
         if (t->state != UNUSED && t->state != ZOMBIE)
@@ -1125,23 +1179,35 @@ void kill_all_threads(struct proc *p)
     }
     // sleep(&p->,);
     // }
-
-    int not_all_dead = 1;
-    while (not_all_dead)
-    {
-        not_all_dead = 0;
-        for (t = p->threads; t < &p->threads[NTHREAD]; t++)
+    acquire(&wait_lock);
+    while(1){
+        acquire(&all_dead_lock);
+        int allDead = 1;
+        struct thread *t;
+        for (t = myproc()->threads; t < &myproc()->threads[NTHREAD]; t++)
         {
-            if (t == cur_thread)
-                continue;
-            acquire(&t->lock);
-            if (t->state == ZOMBIE)
-                freethread(t);
-            if (t->state != ZOMBIE && t->state != UNUSED)
-                not_all_dead = 1;
-            release(&t->lock);
+            if (t != curthread)
+            {
+                acquire(&t->lock);
+                if (t->state != UNUSED && t->state != ZOMBIE)
+                {
+                    allDead = 0;
+                }
+                if(t->state == ZOMBIE)
+                    freethread(t);
+                release(&t->lock);
+            }
+        }
+        release(&all_dead_lock);
+        if(allDead == 0){
+            // printf("exit: %d\n", mythread()->tid);
+            sleep(&all_dead_lock, &wait_lock);
+        }
+        else{
+            break;
         }
     }
+    release(&wait_lock);
 }
 
 int
@@ -1196,6 +1262,7 @@ bsem_down(int descriptor){
         }
         else
         {
+            printf("bsem_down: %d\n", mythread()->tid);
             sleep(&binsems[descriptor], &binsems[descriptor].lock);
         }
     }
