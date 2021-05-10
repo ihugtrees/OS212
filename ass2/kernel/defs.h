@@ -90,7 +90,7 @@ void            exit(int);
 int             fork(void);
 int             growproc(int);
 void            proc_mapstacks(pagetable_t);
-pagetable_t     proc_pagetable(struct proc *);
+pagetable_t     proc_pagetable(struct thread *);
 void            proc_freepagetable(pagetable_t, uint64);
 int             kill(int, int signum);
 struct cpu*     mycpu(void);
@@ -126,7 +126,7 @@ int             bsem_alloc(void);
 void            bsem_free(int);
 void            bsem_down(int);
 void            bsem_up(int);
-
+int             ccsem_alloc(int);
 
 
 // swtch.S

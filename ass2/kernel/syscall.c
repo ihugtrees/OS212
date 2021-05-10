@@ -116,6 +116,7 @@ extern uint64 sys_bsem_alloc(void);
 extern uint64 sys_bsem_free(void);
 extern uint64 sys_bsem_down(void);
 extern uint64 sys_bsem_up(void);
+extern uint64 sys_ccsem_alloc(void);
 
 static uint64 (*syscalls[])(void) = {
 [SYS_fork]    sys_fork,
@@ -149,7 +150,8 @@ static uint64 (*syscalls[])(void) = {
 [SYS_bsem_alloc]      sys_bsem_alloc,
 [SYS_bsem_free]       sys_bsem_free,
 [SYS_bsem_down]       sys_bsem_down,
-[SYS_bsem_up]         sys_bsem_up
+[SYS_bsem_up]         sys_bsem_up,
+[SYS_ccsem_alloc]      sys_ccsem_alloc
 };
 
 void

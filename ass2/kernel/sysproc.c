@@ -207,3 +207,46 @@ sys_bsem_up(void)
   bsem_up(descriptor);
   return 0;
 }
+
+uint64
+sys_ccsem_alloc(void)
+{
+
+  int initial_value;
+  if (argint(0, &initial_value) < 0)
+    return -1;
+  return ccsem_alloc(initial_value);
+}
+
+// uint64
+// sys_csem_free(void)
+// {
+
+//   int initial_value;
+//   if (argint(1, &initial_value) < 0)
+//     return -1;
+//   printf("initial_value: %d", initial_value);
+//   return ccsem_alloc(initial_value);
+// }
+
+// uint64
+// sys_csem_down(void)
+// {
+
+//   int initial_value;
+//   if (argint(1, &initial_value) < 0)
+//     return -1;
+//   printf("initial_value: %d", initial_value);
+//   return ccsem_alloc(initial_value);
+// }
+
+// uint64
+// sys_csem_up(void)
+// {
+
+//   int initial_value;
+//   if (argint(1, &initial_value) < 0)
+//     return -1;
+//   printf("initial_value: %d", initial_value);
+//   return ccsem_alloc(initial_value);
+// }

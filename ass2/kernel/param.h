@@ -19,3 +19,4 @@
 #define SIGSTOP      17
 #define SIGCONT      19
 #define MAX_BSEM     128
+#define STACK_SIZE 4000

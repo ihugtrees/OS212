@@ -1,6 +1,7 @@
 struct stat;
 struct rtcdate;
 struct sigaction;
+struct counting_semaphore;
 
 // system calls
 int fork(void);
@@ -35,6 +36,7 @@ int bsem_alloc();
 void bsem_free(int);
 void bsem_down(int);
 void bsem_up(int);
+int ccsem_alloc(int);
 
 
 // ulib.c

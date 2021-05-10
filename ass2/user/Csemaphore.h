@@ -1,7 +1,20 @@
-void csem_down(struct counting_semaphore *sem);
+struct counting_semaphore{
+    int descriptor;
+};
 
-void csem_up(struct counting_semaphore *sem);
+void csem_down(struct counting_semaphore *sem){
+    bsem_down(sem->descriptor);
+}
 
-int csem_alloc(struct counting_semaphore *sem, int initial_value);
+void csem_up(struct counting_semaphore *sem){
+    bsem_up(sem->descriptor);
+}
 
-void csem_free(struct counting_semaphore *sem);
+int csem_alloc(struct counting_semaphore *sem, int initial_value){
+    sem->descriptor = ccsem_alloc(initial_value);
+    return sem->descriptor;
+}
+
+void csem_free(struct counting_semaphore *sem){
+    bsem_free(sem->descriptor);
+}
