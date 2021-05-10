@@ -124,7 +124,7 @@ void Csem_test(char *s){
     csem_free(&csem);
     wait(&pid);
 
-    printf("Finished bsem test, make sure that the order of the prints is alright. Meaning (1...2...3...4)\n");
+    printf("Finished csem test, make sure that the order of the prints is alright. Meaning (1...2...3...4)\n");
 }
 
 

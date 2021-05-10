@@ -11,8 +11,7 @@ void csem_up(struct counting_semaphore *sem){
 }
 
 int csem_alloc(struct counting_semaphore *sem, int initial_value){
-
-    sem->descriptor = ccsem_alloc(sem, initial_value);
+    sem->descriptor = ccsem_alloc(initial_value);
     return sem->descriptor;
 }
 

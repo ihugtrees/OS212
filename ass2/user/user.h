@@ -36,7 +36,7 @@ int bsem_alloc();
 void bsem_free(int);
 void bsem_down(int);
 void bsem_up(int);
-int ccsem_alloc(struct counting_semaphore*,int);
+int ccsem_alloc(int);
 
 
 // ulib.c
