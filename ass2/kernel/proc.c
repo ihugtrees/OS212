@@ -683,7 +683,7 @@ void scheduler(void)
                     // before jumping back to us.
                     t->state = RUNNING;
                     c->proc = p;
-                    // printf("proc running/thread running: %d/%d\n", p->pid, t->tid);
+                    // printf("pid/tid/cid: %d/%d/%d\n", p->pid, t->tid, cpuid());
                     c->thread = t;
                     swtch(&c->context, &t->context);
 

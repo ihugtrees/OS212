@@ -36,8 +36,8 @@ struct test {
 };
 
 char *exec_simple_argv[] = {
-  "<placeholder>",
-  "--exec-test-simple-func",
+  "echo",
+  "echo",
   0
 };
 char *exec_argv[] = {
@@ -155,7 +155,7 @@ void thread_func_exit_sleep_1_xstatus_98() {
 
 void thread_func_exec_sleep_1_xstatus_98() {
   sleep(1);
-  exec(exec_argv[0], exec_argv);
+  exec("echo", exec_argv);
   printf("exec failed, exiting\n");
   exit(-80);
 }
@@ -366,7 +366,7 @@ void max_threads_exit_by_created_they_run_forever(char *s) {
   void *last_stack;
   int my_tid = kthread_id();
 
-  print("thread %d started", my_tid);
+  printf("thread %d started\n", my_tid);
   for (int i = 0; i < NTHREAD - 1; i++) {
     void (*f)();
     stacks[i] = malloc(4000);
@@ -384,7 +384,7 @@ void max_threads_exit_by_created_they_run_forever(char *s) {
       error_exit("kthread_create failed");
     }
 
-    print("created thread %d", tids[i]);
+    printf("created thread %d\n", tids[i]);
   }
 
   if ((last_stack = malloc(4000)) < 0) {
@@ -405,7 +405,7 @@ void max_threads_exit_by_created_they_exit_after_1(char *s) {
   void *last_stack;
   int my_tid = kthread_id();
 
-  print("thread %d started", my_tid);
+  printf("thread %d started\n", my_tid);
   for (int i = 0; i < NTHREAD - 1; i++) {
     void (*f)();
     stacks[i] = malloc(4000);
@@ -423,7 +423,7 @@ void max_threads_exit_by_created_they_exit_after_1(char *s) {
       error_exit("kthread_create failed");
     }
 
-    print("created thread %d", tids[i]);
+    printf("created thread %d\n", tids[i]);
   }
 
   if ((last_stack = malloc(4000)) < 0) {
@@ -532,7 +532,7 @@ void max_threads_exec_simple(char *s) {
   void *last_stack;
   int my_tid = kthread_id();
 
-  print("thread %d started", my_tid);
+  printf("thread %d started\n", my_tid);
   for (int i = 0; i < NTHREAD - 1; i++) {
     stacks[i] = malloc(4000);
     if (stacks[i] < 0) {
@@ -543,7 +543,7 @@ void max_threads_exec_simple(char *s) {
       error_exit("kthread_create failed");
     }
 
-    print("created thread %d", tids[i]);
+    printf("created thread %d\n", tids[i]);
   }
 
   if ((last_stack = malloc(4000)) < 0) {
@@ -557,10 +557,10 @@ void max_threads_exec_simple(char *s) {
   }
   free(last_stack);
   
-  print("going to sleep");
+  printf("going to sleep\n");
   sleep(5);
-  print("exec...");
-  exec(exec_simple_argv[0], exec_simple_argv);
+  printf("exec...\n");
+  exec("echo", exec_simple_argv);
   printf("exec failed, exiting\n");
   exit(-80);
 }
@@ -571,7 +571,7 @@ void max_threads_exec(char *s) {
   void *last_stack;
   int my_tid = kthread_id();
 
-  print("thread %d started", my_tid);
+  printf("thread %d started\n", my_tid);
   for (int i = 0; i < NTHREAD - 1; i++) {
     stacks[i] = malloc(4000);
     if (stacks[i] < 0) {
@@ -582,7 +582,7 @@ void max_threads_exec(char *s) {
       error_exit("kthread_create failed");
     }
 
-    print("created thread %d", tids[i]);
+    printf("created thread %d\n", tids[i]);
   }
 
   if ((last_stack = malloc(4000)) < 0) {
@@ -596,10 +596,10 @@ void max_threads_exec(char *s) {
   }
   free(last_stack);
   
-  print("going to sleep");
+  printf("going to sleep\n");
   sleep(5);
-  print("exec...");
-  exec(exec_argv[0], exec_argv);
+  printf("exec...\n");
+  exec("echo", exec_argv);
   printf("exec failed, exiting\n");
   exit(-80);
 }
@@ -610,7 +610,7 @@ void max_threads_exec_they_exit_after_1(char *s) {
   void *last_stack;
   int my_tid = kthread_id();
 
-  print("thread %d started", my_tid);
+  printf("thread %d started\n", my_tid);
   for (int i = 0; i < NTHREAD - 1; i++) {
     stacks[i] = malloc(4000);
     if (stacks[i] < 0) {
@@ -621,7 +621,7 @@ void max_threads_exec_they_exit_after_1(char *s) {
       error_exit("kthread_create failed");
     }
 
-    print("created thread %d", tids[i]);
+    printf("created thread %d\n", tids[i]);
   }
 
   if ((last_stack = malloc(4000)) < 0) {
@@ -635,10 +635,10 @@ void max_threads_exec_they_exit_after_1(char *s) {
   }
   free(last_stack);
   
-  print("going to sleep");
+  printf("going to sleep\n");
   sleep(5);
-  print("exec...");
-  exec(exec_argv[0], exec_argv);
+  printf("exec...\n");
+  exec("echo", exec_argv);
   printf("exec failed, exiting\n");
   exit(-80);
 }
@@ -649,7 +649,7 @@ void max_threads_exec_by_created_they_run_forever(char *s) {
   void *last_stack;
   int my_tid = kthread_id();
 
-  print("thread %d started", my_tid);
+  printf("thread %d started\n", my_tid);
   for (int i = 0; i < NTHREAD - 1; i++) {
     void (*f)();
     stacks[i] = malloc(4000);
@@ -667,7 +667,7 @@ void max_threads_exec_by_created_they_run_forever(char *s) {
       error_exit("kthread_create failed");
     }
 
-    print("created thread %d", tids[i]);
+    printf("created thread %d\n", tids[i]);
   }
 
   if ((last_stack = malloc(4000)) < 0) {
@@ -688,7 +688,7 @@ void max_threads_exec_by_created_they_exit_after_1(char *s) {
   void *last_stack;
   int my_tid = kthread_id();
 
-  print("thread %d started", my_tid);
+  printf("thread %d started\n", my_tid);
   for (int i = 0; i < NTHREAD - 1; i++) {
     void (*f)();
     stacks[i] = malloc(4000);
@@ -706,7 +706,7 @@ void max_threads_exec_by_created_they_exit_after_1(char *s) {
       error_exit("kthread_create failed");
     }
 
-    print("created thread %d", tids[i]);
+    printf("created thread %d\n", tids[i]);
   }
 
   if ((last_stack = malloc(4000)) < 0) {
@@ -729,7 +729,7 @@ void max_threads_fork(char *s) {
   void *last_stack;
   int my_tid = kthread_id();
 
-  print("thread %d started", my_tid);
+  printf("thread %d started\n", my_tid);
   for (int i = 0; i < NTHREAD - 1; i++) {
     stacks[i] = malloc(4000);
     if (stacks[i] < 0) {
@@ -740,7 +740,7 @@ void max_threads_fork(char *s) {
       error_exit("kthread_create failed");
     }
 
-    print("created thread %d", tids[i]);
+    printf("created thread %d\n", tids[i]);
   }
 
   if ((last_stack = malloc(4000)) < 0) {
@@ -754,9 +754,9 @@ void max_threads_fork(char *s) {
   }
   free(last_stack);
   
-  print("going to sleep");
+  printf("going to sleep\n");
   sleep(5);
-  print("forking...");
+  printf("forking...\n");
   child_pid = fork();
   if (child_pid < 0) {
     error_exit("fork failed");
@@ -767,7 +767,7 @@ void max_threads_fork(char *s) {
     exit(9);
   }
 
-  print("waiting...");
+  printf("waiting...\n");
   if (wait(&child_xstatus) < 0) {
     error_exit("wait failed");
   }
