@@ -138,7 +138,7 @@ void niv_test()
 
 int main(int argc, char *argv[])
 {
-    // igor_test();
+    igor_test();
     // niv_test();
 
     exit(0);
