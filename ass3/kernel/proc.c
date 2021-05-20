@@ -205,9 +205,9 @@ freeproc(struct proc *p)
   alloc_page_data(p);
   if (p->pid > 2)
   {
-    release(&p->lock);
+    // release(&p->lock);
     removeSwapFile(p);
-    acquire(&p->lock);
+    // acquire(&p->lock);
   }
 }
 
@@ -353,6 +353,39 @@ int fork(void)
 
   pid = np->pid;
 
+  if (pid > 2)
+  {
+    /** only new processes need to create page swap (i.e excluding init and shell) **/
+    release(&np->lock);
+    createSwapFile(np);
+    acquire(&np->lock);
+    np->aloc_pages = proc->aloc_pages;
+    np->ram_pages = proc->ram_pages;
+    int i;
+    for (i = 0; i < MAX_TOTAL_PAGES; i++)
+    {
+      np->all_pages[i].is_allocated = proc->all_pages[i].is_allocated;
+      np->all_pages[i].in_RAM = proc->all_pages[i].in_RAM;
+      np->all_pages[i].v_addr = proc->all_pages[i].v_addr;
+      np->all_pages[i].age = proc->all_pages[i].age;
+    }
+    char *newPage = kalloc();
+    for (i = 0; i < MAX_TOTAL_PAGES; i++)
+    {
+      if (np->all_pages[i].is_allocated && !np->all_pages[i].in_RAM)
+      {
+        readFromSwapFile(proc, newPage, i * PGSIZE, PGSIZE);
+        writeToSwapFile(np, newPage, i * PGSIZE, PGSIZE);
+      }
+    }
+    // for (i = 0; i < MAX_PSYC_PAGES; i++)
+    // {
+    //   np->inRAMQueue[i] = proc->inRAMQueue[i];
+    // }
+
+    kfree(newPage);
+  }
+
   release(&np->lock);
 
   acquire(&wait_lock);
@@ -482,6 +515,25 @@ int wait(uint64 addr)
   }
 }
 
+void aging(void)
+{
+  struct proc *p = myproc();
+
+  for (int i = 0; i < MAX_TOTAL_PAGES; i++)
+  {
+    if (p->all_pages[i].is_allocated == 1)
+    {
+      p->all_pages[i].age = p->all_pages[i].age >> 1;
+      pte_t *pte = walk(p->pagetable, p->all_pages[i].v_addr, 0);
+      if (*pte & PTE_A)
+      {
+        p->all_pages[i].age = p->all_pages[i].age | 0x80000000;
+        *pte &= ~PTE_A;
+      }
+    }
+  }
+}
+
 // Per-CPU process scheduler.
 // Each CPU calls scheduler() after setting itself up.
 // Scheduler never returns.  It loops, doing:
@@ -511,6 +563,10 @@ void scheduler(void)
         p->state = RUNNING;
         c->proc = p;
         swtch(&c->context, &p->context);
+
+#if (defined(NFUA) || defined(LAPA))
+        agePages();
+#endif
 
         // Process is done running for now.
         // It should have changed its p->state before coming back.
@@ -714,4 +770,25 @@ void procdump(void)
     printf("%d %s %s", p->pid, state, p->name);
     printf("\n");
   }
+}
+
+int NFUA()
+{
+  struct proc *p = myproc();
+  int i;
+  int min_index = 0;
+  for (i = 0; i < MAX_PSYC_PAGES; i++)
+  {
+    if (p->all_pages[i].is_allocated && p->all_pages[i].in_RAM)
+    {
+      min_index = i;
+      break;
+    }
+  }
+  for (i = 0; i < MAX_PSYC_PAGES; i++)
+  {
+    if (p->all_pages[i].is_allocated && p->all_pages[i].in_RAM && (p->all_pages[i].age < p->all_pages[min_index].age))
+      min_index = i;
+  }
+  return min_index;
 }

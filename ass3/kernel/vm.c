@@ -163,6 +163,7 @@ int mappages(pagetable_t pagetable, uint64 va, uint64 size, uint64 pa, int perm)
 void page_to_swap()
 {
   struct proc *p = myproc();
+  // int index = select_page();
 
   for (int i = 0; i < MAX_TOTAL_PAGES; i++)
   {
@@ -196,7 +197,24 @@ void page_to_RAM(int index)
 
   //turn on the valid bit and turn off the PG bit.
   pte_t *pte = walk(p->pagetable, p->all_pages[index].v_addr, 0);
-  *pte = (*pte | PTE_V) & ~PTE_PG;
+  *pte = ((*pte | PTE_V) & ~PTE_PG) | PTE_A;
+
+
+#if defined(NFUA)
+  p->all_pages[index].age = 0;
+#endif
+
+#if defined(LAPA)
+  p->all_pages[index].age = 0xffffffff;
+#endif
+
+#if defined(SCFIFO)
+  index = removeSCFIFO();
+#endif
+
+#if defined(NONE)
+  index = removeNONE();
+#endif
 }
 
 void remove_page(uint64 va)
@@ -207,8 +225,8 @@ void remove_page(uint64 va)
   {
     if (p->all_pages[i].v_addr == va)
     {
-      p->all_pages[i].v_addr = 0;
       p->all_pages[i].is_allocated = 0;
+      p->all_pages[i].v_addr = 0;
 
       if (p->all_pages[i].in_RAM)
         p->ram_pages--;
@@ -244,24 +262,27 @@ void alloc_page(pagetable_t pagetable, uint64 va)
   }
 }
 
-uint64 select_page()
+int select_page()
 {
   int index = 0;
+
+#if defined(NFUA)
+  index = removeNFUA();
+#endif
+
+#if defined(LAPA)
+  index = removeLAPA();
+#endif
 
 #if defined(SCFIFO)
   index = removeSCFIFO();
 #endif
-#if defined(NFUA)
-  index = removeNFUA();
-#endif
-#if defined(LAPA)
-  index = removeLAPA();
-#endif
+
 #if defined(NONE)
   index = removeNONE();
 #endif
 
-  return myproc()->all_pages[index].v_addr;
+  return index;
 }
 //============================================================ Q1 ============================================================//
 
@@ -281,10 +302,13 @@ void uvmunmap(pagetable_t pagetable, uint64 va, uint64 npages, int do_free)
     if ((pte = walk(pagetable, a, 0)) == 0)
       panic("uvmunmap: walk");
     if ((*pte & PTE_V) == 0)
-      panic("uvmunmap: not mapped");
+    {
+      if ((*pte & PTE_PG) == 0)
+        panic("uvmunmap: not mapped");
+    }
     if (PTE_FLAGS(*pte) == PTE_V)
       panic("uvmunmap: not a leaf");
-    if (do_free)
+    if (do_free && ((*pte & PTE_PG) == 0))
     {
       uint64 pa = PTE2PA(*pte);
       kfree((void *)pa);
@@ -352,8 +376,8 @@ uvmalloc(pagetable_t pagetable, uint64 oldsz, uint64 newsz)
     if (myproc()->pid > 2)
     {
       alloc_page(pagetable, a);
-      pte_t *pte = walk(pagetable, a, 0);
-      *pte = PTE_V | (*pte);
+      // pte_t *pte = walk(pagetable, a, 0);
+      // *pte = PTE_V | (*pte);
     }
   }
   return newsz;
@@ -428,7 +452,10 @@ int uvmcopy(pagetable_t old, pagetable_t new, uint64 sz)
     if ((pte = walk(old, i, 0)) == 0)
       panic("uvmcopy: pte should exist");
     if ((*pte & PTE_V) == 0)
-      panic("uvmcopy: page not present");
+    {
+      if ((*pte & PTE_PG) == 0)
+        panic("uvmcopy: page not present");
+    }
     pa = PTE2PA(*pte);
     flags = PTE_FLAGS(*pte);
     if ((mem = kalloc()) == 0)
