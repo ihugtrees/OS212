@@ -1,6 +1,7 @@
 {
     "files.associations": {
         "fs.h": "c",
-        "memlayout.h": "c"
+        "memlayout.h": "c",
+        "type_traits": "c"
     }
 }

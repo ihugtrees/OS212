@@ -110,6 +110,10 @@ void alloc_page_data(struct proc *p)
     p->all_pages[i].v_addr = 0;
     p->all_pages[i].in_RAM = 0;
     p->all_pages[i].age = 0;
+
+#if defined(LAPA)
+    p->all_pages[i].age = 0xffffffff;
+#endif
   }
 
   // for (int i = 0; i < MAX_PSYC_PAGES; i++)
@@ -361,16 +365,13 @@ int fork(void)
     np->aloc_pages = p->aloc_pages;
     np->ram_pages = p->ram_pages;
     int i;
+    char *newPage = kalloc();
     for (i = 0; i < MAX_TOTAL_PAGES; i++)
     {
       np->all_pages[i].is_allocated = p->all_pages[i].is_allocated;
       np->all_pages[i].in_RAM = p->all_pages[i].in_RAM;
       np->all_pages[i].v_addr = p->all_pages[i].v_addr;
       np->all_pages[i].age = p->all_pages[i].age;
-    }
-    char *newPage = kalloc();
-    for (i = 0; i < MAX_TOTAL_PAGES; i++)
-    {
       if (np->all_pages[i].is_allocated && !np->all_pages[i].in_RAM)
       {
         readFromSwapFile(p, newPage, i * PGSIZE, PGSIZE);
@@ -520,7 +521,7 @@ void aging(void)
 
   for (int i = 0; i < MAX_TOTAL_PAGES; i++)
   {
-    if (p->all_pages[i].is_allocated == 1)
+    if (p->all_pages[i].is_allocated && p->all_pages[i].in_RAM)
     {
       p->all_pages[i].age = p->all_pages[i].age >> 1;
       pte_t *pte = walk(p->pagetable, p->all_pages[i].v_addr, 0);
@@ -784,7 +785,7 @@ int NFUA()
       break;
     }
   }
-  for (i = 0; i < MAX_PSYC_PAGES; i++)
+  for (i = 1; i < MAX_PSYC_PAGES; i++)
   {
     if (p->all_pages[i].is_allocated && p->all_pages[i].in_RAM && (p->all_pages[i].age < p->all_pages[min_index].age))
       min_index = i;
@@ -821,9 +822,9 @@ int LAPA()
       break;
     }
   }
+
   for (i = 1; i < MAX_PSYC_PAGES; i++)
   {
-    int counter = 0;
     int i_count = count_ones(p->all_pages[i].age);
     if (p->all_pages[i].is_allocated && p->all_pages[i].in_RAM && (i_count < min_counter))
     {
@@ -832,4 +833,59 @@ int LAPA()
     }
   }
   return min_index;
+}
+int enqueue(int index)
+{
+  struct proc *p = myproc();
+  if (((p->last + 1) % MAX_PSYC_PAGES) == p->first)
+  {
+    return -1;
+  }
+
+  p->ram_queue[p->last] = index;
+  p->last = (p->last + 1) % MAX_PSYC_PAGES;
+  return 0;
+}
+
+int dequeue(void)
+{
+  struct proc *p = myproc();
+  if (p->first == p->last)
+  {
+    return -1;
+  }
+
+  p->first = (p->first + 1) % MAX_PSYC_PAGES;
+  int index = 0;
+  if (p->first - 1 == -1)
+    index = p->ram_queue[MAX_PSYC_PAGES - 1];
+  else
+    index = p->ram_queue[p->first - 1];
+  return index;
+}
+
+int SCFIFO()
+{
+  struct proc *p = myproc();
+  int index = -1;
+  // int first = -1;
+  for (int i = 0; i < MAX_PSYC_PAGES; i++)
+  {
+    int temp = dequeue();
+    pte_t *pte = walk(p->pagetable, p->all_pages[temp].v_addr, 0);
+    if (index == -1 && (*pte & PTE_A) == 0)
+    {
+      index = temp;
+    }
+    else
+    {
+      if (index == -1)
+        *pte &= ~PTE_A;
+      enqueue(temp);
+    }
+  }
+  if (index == -1)
+    index = dequeue();
+
+  return index;
 }

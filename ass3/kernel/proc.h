@@ -133,11 +133,12 @@ struct proc
   int aloc_pages;
   int ram_pages;
 
-  // uint64 fileOffset;           // next place to write in the file
   // int numberOfPagedOut;        // number of pages in the swap file
   // int numberOfPageFaults;      // the number of times a page fault has occurred
   // int totalNumberOfPagedOut;   // the number of times a page was moved to swap file
 
-  // int inRAMQueue[MAX_PSYC_PAGES];
+  int ram_queue[MAX_PSYC_PAGES];
+  int first;
+  int last;
   // int availableOffsetQueue[MAX_PSYC_PAGES];
 };

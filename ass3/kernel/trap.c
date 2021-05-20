@@ -61,6 +61,10 @@ void usertrap(void)
         }
       }
     }
+    else
+    {
+      panic("no such page");
+    }
   }
 
   if (r_scause() == 8)

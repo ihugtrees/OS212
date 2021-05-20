@@ -160,33 +160,52 @@ int mappages(pagetable_t pagetable, uint64 va, uint64 size, uint64 pa, int perm)
 }
 //============================================================ Q1 ============================================================//
 
-void page_to_swap()
+int select_page()
+{
+  int index = 0;
+
+#if defined(NFUA)
+  index = NFUA();
+#endif
+
+#if defined(LAPA)
+  index = LAPA();
+#endif
+
+#if defined(SCFIFO)
+  index = SCFIFO();
+#endif
+
+#if defined(NONE)
+#endif
+
+  return index;
+}
+
+void page_to_file()
 {
   struct proc *p = myproc();
-  // int index = select_page();
+  int index = select_page();
 
-  for (int i = 0; i < MAX_TOTAL_PAGES; i++)
-  {
-    if (p->all_pages[i].in_RAM)
-    {
-      pte_t *pte = walk(p->pagetable, p->all_pages[i].v_addr, 0);
-      *pte = (*pte & (~PTE_V)) | PTE_PG;
-      *pte = PTE2PA(*pte);
-      writeToSwapFile(p, (char *)pte, i * PGSIZE, PGSIZE);
-      p->all_pages[i].in_RAM = 0;
-      p->ram_pages--;
-      kfree(pte);
-      break;
-    }
-  }
+  pte_t *pte = walk(p->pagetable, p->all_pages[index].v_addr, 0);
+  *pte = (*pte & (~PTE_V)) | PTE_PG;
+  *pte = PTE2PA(*pte);
+  writeToSwapFile(p, (char *)pte, index * PGSIZE, PGSIZE);
+  p->all_pages[index].in_RAM = 0;
+  p->ram_pages--;
+  kfree(pte);
 
-  //TODO
-  //delete relevant line in tlb
+  //TODO delete relevant line in tlb
 }
 
 void page_to_RAM(int index)
 {
   struct proc *p = myproc();
+  if (p->ram_pages >= MAX_PSYC_PAGES)
+  {
+    page_to_file();
+  }
+
   uvmalloc(p->pagetable, p->sz, p->sz + PGSIZE);
   uint64 buffer = walkaddr(p->pagetable, p->all_pages[index].v_addr);
   readFromSwapFile(p, (char *)buffer, index * PGSIZE, PGSIZE);
@@ -195,10 +214,8 @@ void page_to_RAM(int index)
   p->all_pages[index].in_RAM = 1;
   p->ram_pages++;
 
-  //turn on the valid bit and turn off the PG bit.
   pte_t *pte = walk(p->pagetable, p->all_pages[index].v_addr, 0);
   *pte = ((*pte | PTE_V) & ~PTE_PG) | PTE_A;
-
 
 #if defined(NFUA)
   p->all_pages[index].age = 0;
@@ -209,11 +226,10 @@ void page_to_RAM(int index)
 #endif
 
 #if defined(SCFIFO)
-  index = removeSCFIFO();
+  enqeue(index);
 #endif
 
 #if defined(NONE)
-  index = removeNONE();
 #endif
 }
 
@@ -246,7 +262,7 @@ void alloc_page(pagetable_t pagetable, uint64 va)
   }
   if (p->ram_pages >= MAX_PSYC_PAGES)
   {
-    page_to_swap(pagetable);
+    page_to_file(pagetable);
   }
   for (int i = 0; i < MAX_TOTAL_PAGES; i++)
   {
@@ -257,32 +273,13 @@ void alloc_page(pagetable_t pagetable, uint64 va)
       p->all_pages[i].in_RAM = 1;
       p->ram_pages++;
       p->aloc_pages++;
+
+#if defined(SCFIFO)
+      enqueue(i);
+#endif
       break;
     }
   }
-}
-
-int select_page()
-{
-  int index = 0;
-
-#if defined(NFUA)
-  index = removeNFUA();
-#endif
-
-#if defined(LAPA)
-  index = removeLAPA();
-#endif
-
-#if defined(SCFIFO)
-  index = removeSCFIFO();
-#endif
-
-#if defined(NONE)
-  index = removeNONE();
-#endif
-
-  return index;
 }
 //============================================================ Q1 ============================================================//
 

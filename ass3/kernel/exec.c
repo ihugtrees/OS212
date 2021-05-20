@@ -15,53 +15,42 @@ void exec_backup_pages(struct pagedata backup_pages[], int backup_proc[])
   int i;
   for (i = 0; i < MAX_TOTAL_PAGES; i++)
   {
-    /**  backup proc pagesDS before clean**/
     backup_pages[i].is_allocated = p->all_pages[i].is_allocated;
     backup_pages[i].in_RAM = p->all_pages[i].in_RAM;
     backup_pages[i].v_addr = p->all_pages[i].v_addr;
-
-    /**  clean proc all_pages before exec **/
     p->all_pages[i].is_allocated = 0;
     p->all_pages[i].in_RAM = 0;
     p->all_pages[i].v_addr = 0;
   }
 
-  for (i = 0; i < MAX_PSYC_PAGES; ++i)
+  for (i = 0; i < MAX_PSYC_PAGES; i++)
   {
-    /**  backup pages queue **/
     // queueBackup[i] = proc->inRAMQueue[i];
-    /**  clear pages queue **/
     // proc->inRAMQueue[i] = -1;
   }
 
-  /**  backup proc page counters before clean **/
   backup_proc[0] = p->aloc_pages;
   backup_proc[1] = p->ram_pages;
-  /**  clean proc page counters before exec **/
   p->aloc_pages = 0;
   p->ram_pages = 0;
 }
 
-void exec_restore_pages(struct pagedata backupDS[], int backupIndexes[])
+void exec_restore_pages(struct pagedata backup_pages[], int backup_proc[])
 {
   struct proc *p = myproc();
   int i;
-  for (i = 0; i < MAX_TOTAL_PAGES; ++i)
+  for (i = 0; i < MAX_TOTAL_PAGES; i++)
   {
-    /**  restore proc pagesDS after failed exec **/
-    p->all_pages[i].is_allocated = backupDS[i].is_allocated;
-    p->all_pages[i].in_RAM = backupDS[i].in_RAM;
-    p->all_pages[i].v_addr = backupDS[i].v_addr;
+    p->all_pages[i].is_allocated = backup_pages[i].is_allocated;
+    p->all_pages[i].in_RAM = backup_pages[i].in_RAM;
+    p->all_pages[i].v_addr = backup_pages[i].v_addr;
   }
-
   // for (i = 0; i < MAX_PSYC_PAGES; ++i)
   // {
   //   p->inRAMQueue[i] = queueBackup[i];
   // }
-
-  /**  restore proc page counters after failed exec **/
-  p->aloc_pages = backupIndexes[0];
-  p->ram_pages = backupIndexes[1];
+  p->aloc_pages = backup_proc[0];
+  p->ram_pages = backup_proc[1];
 }
 
 int exec(char *path, char **argv)
