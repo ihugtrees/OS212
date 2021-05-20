@@ -355,32 +355,31 @@ int fork(void)
 
   if (pid > 2)
   {
-    /** only new processes need to create page swap (i.e excluding init and shell) **/
     release(&np->lock);
     createSwapFile(np);
     acquire(&np->lock);
-    np->aloc_pages = proc->aloc_pages;
-    np->ram_pages = proc->ram_pages;
+    np->aloc_pages = p->aloc_pages;
+    np->ram_pages = p->ram_pages;
     int i;
     for (i = 0; i < MAX_TOTAL_PAGES; i++)
     {
-      np->all_pages[i].is_allocated = proc->all_pages[i].is_allocated;
-      np->all_pages[i].in_RAM = proc->all_pages[i].in_RAM;
-      np->all_pages[i].v_addr = proc->all_pages[i].v_addr;
-      np->all_pages[i].age = proc->all_pages[i].age;
+      np->all_pages[i].is_allocated = p->all_pages[i].is_allocated;
+      np->all_pages[i].in_RAM = p->all_pages[i].in_RAM;
+      np->all_pages[i].v_addr = p->all_pages[i].v_addr;
+      np->all_pages[i].age = p->all_pages[i].age;
     }
     char *newPage = kalloc();
     for (i = 0; i < MAX_TOTAL_PAGES; i++)
     {
       if (np->all_pages[i].is_allocated && !np->all_pages[i].in_RAM)
       {
-        readFromSwapFile(proc, newPage, i * PGSIZE, PGSIZE);
+        readFromSwapFile(p, newPage, i * PGSIZE, PGSIZE);
         writeToSwapFile(np, newPage, i * PGSIZE, PGSIZE);
       }
     }
     // for (i = 0; i < MAX_PSYC_PAGES; i++)
     // {
-    //   np->inRAMQueue[i] = proc->inRAMQueue[i];
+    //   np->inRAMQueue[i] = p->inRAMQueue[i];
     // }
 
     kfree(newPage);
@@ -565,7 +564,7 @@ void scheduler(void)
         swtch(&c->context, &p->context);
 
 #if (defined(NFUA) || defined(LAPA))
-        agePages();
+        aging();
 #endif
 
         // Process is done running for now.
@@ -789,6 +788,48 @@ int NFUA()
   {
     if (p->all_pages[i].is_allocated && p->all_pages[i].in_RAM && (p->all_pages[i].age < p->all_pages[min_index].age))
       min_index = i;
+  }
+  return min_index;
+}
+
+int count_ones(int n)
+{
+  int counter = 0;
+  while (n > 0)
+  {
+    if (n & 1)
+    {
+      counter++;
+    }
+    n = n >> 1;
+  }
+  return counter;
+}
+
+int LAPA()
+{
+  struct proc *p = myproc();
+  int i;
+  int min_index = 0;
+  int min_counter = 0;
+  for (i = 0; i < MAX_PSYC_PAGES; i++)
+  {
+    if (p->all_pages[i].is_allocated && p->all_pages[i].in_RAM)
+    {
+      min_index = i;
+      min_counter = count_ones(p->all_pages[i].age);
+      break;
+    }
+  }
+  for (i = 1; i < MAX_PSYC_PAGES; i++)
+  {
+    int counter = 0;
+    int i_count = count_ones(p->all_pages[i].age);
+    if (p->all_pages[i].is_allocated && p->all_pages[i].in_RAM && (i_count < min_counter))
+    {
+      min_index = i;
+      min_counter = i_count;
+    }
   }
   return min_index;
 }
