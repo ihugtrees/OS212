@@ -93,12 +93,11 @@ enum procstate
   ZOMBIE
 };
 
-struct page
+struct pagedata
 {
-  int isAllocated;
-  uint64 v_address;
+  int is_allocated;
   int in_RAM;
-  int file_offset;
+  uint64 v_addr;
   uint age;
 };
 
@@ -127,16 +126,18 @@ struct proc
   struct inode *cwd;           // Current directory
   char name[16];               // Process name (debugging)
 
+  //============================================================ Q1 ============================================================//
   struct file *swapFile;
 
-  struct page all_pages[MAX_TOTAL_PAGES];
-  uint64 fileOffset; // next place to write in the file
+  struct pagedata all_pages[MAX_TOTAL_PAGES];
+  int aloc_pages;
+  int ram_pages;
 
-  int numberOfAllocatedPages; // the total allocated pages
-  int numberOfPagedOut;      // number of pages in the swap file
-  int numberOfPageFaults;     // the number of times a page fault has occurred
-  int totalNumberOfPagedOut;  // the number of times a page was moved to swap file
+  // uint64 fileOffset;           // next place to write in the file
+  // int numberOfPagedOut;        // number of pages in the swap file
+  // int numberOfPageFaults;      // the number of times a page fault has occurred
+  // int totalNumberOfPagedOut;   // the number of times a page was moved to swap file
 
-  int inRAMQueue[MAX_PSYC_PAGES];
-  int availableOffsetQueue[MAX_PSYC_PAGES];
+  // int inRAMQueue[MAX_PSYC_PAGES];
+  // int availableOffsetQueue[MAX_PSYC_PAGES];
 };

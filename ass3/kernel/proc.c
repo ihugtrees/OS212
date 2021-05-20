@@ -99,6 +99,25 @@ int allocpid()
   return pid;
 }
 
+void alloc_page_data(struct proc *p)
+{
+  p->aloc_pages = 0;
+  p->ram_pages = 0;
+
+  for (int i = 0; i < MAX_TOTAL_PAGES; i++)
+  {
+    p->all_pages[i].is_allocated = 0;
+    p->all_pages[i].v_addr = 0;
+    p->all_pages[i].in_RAM = 0;
+    p->all_pages[i].age = 0;
+  }
+
+  // for (int i = 0; i < MAX_PSYC_PAGES; i++)
+  // {
+  //   p->inRAMQueue[i] = -1;
+  // }
+}
+
 // Look in the process table for an UNUSED proc.
 // If found, initialize state required to run in the kernel,
 // and return with p->lock held.
@@ -149,23 +168,14 @@ found:
   p->context.ra = (uint64)forkret;
   p->context.sp = p->kstack + PGSIZE;
 
-  // Q1 //
-  p->fileOffset = 0;
-  // p->pagesInSwpFile = 0;
-  p->numberOfPageFaults = 0;
-  int i;
-  for (i = 0; i < MAX_TOTAL_PAGES; i++)
+  //============================================================ Q1 ============================================================//
+  alloc_page_data(p);
+  p->swapFile = 0;
+  if (p->pid > 2)
   {
-    p->all_pages[i].isAllocated = 0;
-    p->all_pages[i].v_address = 0;
-    p->all_pages[i].in_RAM = 0;
-    p->all_pages[i].file_offset = 0;
-    p->all_pages[i].age = 0;
-  }
-
-  for (i = 0; i < MAX_PSYC_PAGES; i++)
-  {
-    p->inRAMQueue[i] = -1;
+    release(&p->lock);
+    createSwapFile(p);
+    acquire(&p->lock);
   }
   return p;
 }
@@ -190,6 +200,15 @@ freeproc(struct proc *p)
   p->killed = 0;
   p->xstate = 0;
   p->state = UNUSED;
+
+  //============================================================ Q1 ============================================================//
+  alloc_page_data(p);
+  if (p->pid > 2)
+  {
+    release(&p->lock);
+    removeSwapFile(p);
+    acquire(&p->lock);
+  }
 }
 
 // Create a user page table for a given process,

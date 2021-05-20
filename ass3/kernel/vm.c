@@ -5,6 +5,8 @@
 #include "riscv.h"
 #include "defs.h"
 #include "fs.h"
+#include "spinlock.h"
+#include "proc.h"
 
 /*
  * the kernel's page table.
@@ -156,6 +158,112 @@ int mappages(pagetable_t pagetable, uint64 va, uint64 size, uint64 pa, int perm)
   }
   return 0;
 }
+//============================================================ Q1 ============================================================//
+
+void page_to_swap()
+{
+  struct proc *p = myproc();
+
+  for (int i = 0; i < MAX_TOTAL_PAGES; i++)
+  {
+    if (p->all_pages[i].in_RAM)
+    {
+      pte_t *pte = walk(p->pagetable, p->all_pages[i].v_addr, 0);
+      *pte = (*pte & (~PTE_V)) | PTE_PG;
+      *pte = PTE2PA(*pte);
+      writeToSwapFile(p, (char *)pte, i * PGSIZE, PGSIZE);
+      p->all_pages[i].in_RAM = 0;
+      p->ram_pages--;
+      kfree(pte);
+      break;
+    }
+  }
+
+  //TODO
+  //delete relevant line in tlb
+}
+
+void page_to_RAM(int index)
+{
+  struct proc *p = myproc();
+  uvmalloc(p->pagetable, p->sz, p->sz + PGSIZE);
+  uint64 buffer = walkaddr(p->pagetable, p->all_pages[index].v_addr);
+  readFromSwapFile(p, (char *)buffer, index * PGSIZE, PGSIZE);
+
+  p->all_pages[index].v_addr = p->sz;
+  p->all_pages[index].in_RAM = 1;
+  p->ram_pages++;
+
+  //turn on the valid bit and turn off the PG bit.
+  pte_t *pte = walk(p->pagetable, p->all_pages[index].v_addr, 0);
+  *pte = (*pte | PTE_V) & ~PTE_PG;
+}
+
+void remove_page(uint64 va)
+{
+  struct proc *p = myproc();
+
+  for (int i = 0; i < MAX_TOTAL_PAGES; i++)
+  {
+    if (p->all_pages[i].v_addr == va)
+    {
+      p->all_pages[i].v_addr = 0;
+      p->all_pages[i].is_allocated = 0;
+
+      if (p->all_pages[i].in_RAM)
+        p->ram_pages--;
+      p->all_pages[i].in_RAM = 0;
+      p->aloc_pages--;
+      break;
+    }
+  }
+}
+
+void alloc_page(pagetable_t pagetable, uint64 va)
+{
+  struct proc *p = myproc();
+  if (p->aloc_pages >= MAX_TOTAL_PAGES)
+  {
+    panic("exceeded maximum total pages");
+  }
+  if (p->ram_pages >= MAX_PSYC_PAGES)
+  {
+    page_to_swap(pagetable);
+  }
+  for (int i = 0; i < MAX_TOTAL_PAGES; i++)
+  {
+    if (p->all_pages[i].is_allocated == 0)
+    {
+      p->all_pages[i].is_allocated = 1;
+      p->all_pages[i].v_addr = va;
+      p->all_pages[i].in_RAM = 1;
+      p->ram_pages++;
+      p->aloc_pages++;
+      break;
+    }
+  }
+}
+
+uint64 select_page()
+{
+  int index = 0;
+
+#if defined(SCFIFO)
+  index = removeSCFIFO();
+#endif
+#if defined(NFUA)
+  index = removeNFUA();
+#endif
+#if defined(LAPA)
+  index = removeLAPA();
+#endif
+#if defined(NONE)
+  index = removeNONE();
+#endif
+
+  return myproc()->all_pages[index].v_addr;
+}
+//============================================================ Q1 ============================================================//
 
 // Remove npages of mappings starting from va. va must be
 // page-aligned. The mappings must exist.
@@ -181,6 +289,7 @@ void uvmunmap(pagetable_t pagetable, uint64 va, uint64 npages, int do_free)
       uint64 pa = PTE2PA(*pte);
       kfree((void *)pa);
     }
+    remove_page(a);
     *pte = 0;
   }
 }
@@ -240,19 +349,12 @@ uvmalloc(pagetable_t pagetable, uint64 oldsz, uint64 newsz)
       uvmdealloc(pagetable, a, oldsz);
       return 0;
     }
-
-    pte_t *pte;
-    int pageIndex = 0;
-    while ((pageIndex < MAX_TOTAL_PAGES) && (proc->pagesDS[pageIndex].isAllocated == 1))
-      pageIndex++;
-
-    proc->pagesDS[pageIndex].isAllocated = 1;
-    proc->pagesDS[pageIndex].v_address = a;
-    proc->pagesDS[pageIndex].in_RAM = 1;
-    proc->pagesDS[pageIndex].file_offset = -1;
-    pte = walk(pagetable, (char *)a, 0);
-    *pte = PTE_P_ON(*pte);
-    *pte = PTE_PG_OFF(*pte);
+    if (myproc()->pid > 2)
+    {
+      alloc_page(pagetable, a);
+      pte_t *pte = walk(pagetable, a, 0);
+      *pte = PTE_V | (*pte);
+    }
   }
   return newsz;
 }
