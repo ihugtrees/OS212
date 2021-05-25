@@ -111,15 +111,20 @@ void alloc_page_data(struct proc *p)
     p->all_pages[i].in_RAM = 0;
     p->all_pages[i].age = 0;
 
-#if defined(LAPA)
-    p->all_pages[i].age = 0xffffffff;
-#endif
+    if (SELECTION == LAPA)
+    {
+      p->all_pages[i].age = 0xffffffff;
+    }
+    else
+    {
+      p->all_pages[i].age = 0;
+    }
   }
 
-  // for (int i = 0; i < MAX_PSYC_PAGES; i++)
-  // {
-  //   p->inRAMQueue[i] = -1;
-  // }
+  for (int i = 0; i < MAX_PSYC_PAGES; i++)
+  {
+    p->ram_queue[i] = -1;
+  }
 }
 
 // Look in the process table for an UNUSED proc.
@@ -173,13 +178,18 @@ found:
   p->context.sp = p->kstack + PGSIZE;
 
   //============================================================ Q1 ============================================================//
-  alloc_page_data(p);
-  p->swapFile = 0;
-  if (p->pid > 2)
+  // int selection = SELECTION;
+  // if (selection == NFUA || selection == LAPA || selection == SCFIFO)
+  if (SELECTION != NONE)
   {
-    release(&p->lock);
-    createSwapFile(p);
-    acquire(&p->lock);
+    alloc_page_data(p);
+    p->swapFile = 0;
+    if (p->pid > 2)
+    {
+      release(&p->lock);
+      createSwapFile(p);
+      acquire(&p->lock);
+    }
   }
   return p;
 }
@@ -206,12 +216,9 @@ freeproc(struct proc *p)
   p->state = UNUSED;
 
   //============================================================ Q1 ============================================================//
-  alloc_page_data(p);
-  if (p->pid > 2)
+  if (SELECTION != NONE)
   {
-    // release(&p->lock);
-    removeSwapFile(p);
-    // acquire(&p->lock);
+    alloc_page_data(p);
   }
 }
 
@@ -356,34 +363,35 @@ int fork(void)
   safestrcpy(np->name, p->name, sizeof(p->name));
 
   pid = np->pid;
-
-  if (pid > 2)
+  if (SELECTION != NONE)
   {
-    release(&np->lock);
-    createSwapFile(np);
-    acquire(&np->lock);
-    np->aloc_pages = p->aloc_pages;
-    np->ram_pages = p->ram_pages;
-    int i;
-    char *newPage = kalloc();
-    for (i = 0; i < MAX_TOTAL_PAGES; i++)
+    if (pid > 2)
     {
-      np->all_pages[i].is_allocated = p->all_pages[i].is_allocated;
-      np->all_pages[i].in_RAM = p->all_pages[i].in_RAM;
-      np->all_pages[i].v_addr = p->all_pages[i].v_addr;
-      np->all_pages[i].age = p->all_pages[i].age;
-      if (np->all_pages[i].is_allocated && !np->all_pages[i].in_RAM)
+      release(&np->lock);
+      createSwapFile(np);
+      acquire(&np->lock);
+      np->aloc_pages = p->aloc_pages;
+      np->ram_pages = p->ram_pages;
+      int i;
+      char *newPage = kalloc();
+      for (i = 0; i < MAX_TOTAL_PAGES; i++)
       {
-        readFromSwapFile(p, newPage, i * PGSIZE, PGSIZE);
-        writeToSwapFile(np, newPage, i * PGSIZE, PGSIZE);
+        np->all_pages[i].is_allocated = p->all_pages[i].is_allocated;
+        np->all_pages[i].in_RAM = p->all_pages[i].in_RAM;
+        np->all_pages[i].v_addr = p->all_pages[i].v_addr;
+        np->all_pages[i].age = p->all_pages[i].age;
+        if (np->all_pages[i].is_allocated && !np->all_pages[i].in_RAM)
+        {
+          readFromSwapFile(p, newPage, i * PGSIZE, PGSIZE);
+          writeToSwapFile(np, newPage, i * PGSIZE, PGSIZE);
+        }
       }
+      for (i = 0; i < MAX_PSYC_PAGES; i++)
+      {
+        np->ram_queue[i] = p->ram_queue[i];
+      }
+      kfree(newPage);
     }
-    // for (i = 0; i < MAX_PSYC_PAGES; i++)
-    // {
-    //   np->inRAMQueue[i] = p->inRAMQueue[i];
-    // }
-
-    kfree(newPage);
   }
 
   release(&np->lock);
@@ -440,6 +448,13 @@ void exit(int status)
   iput(p->cwd);
   end_op();
   p->cwd = 0;
+
+  if (SELECTION != NONE && p->pid > 2)
+  {
+    // release(&p->lock);
+    removeSwapFile(p);
+    // acquire(&p->lock);
+  }
 
   acquire(&wait_lock);
 
@@ -523,12 +538,12 @@ void aging(void)
   {
     if (p->all_pages[i].is_allocated && p->all_pages[i].in_RAM)
     {
-      p->all_pages[i].age = p->all_pages[i].age >> 1;
+      p->all_pages[i].age >>= 1;
       pte_t *pte = walk(p->pagetable, p->all_pages[i].v_addr, 0);
       if (*pte & PTE_A)
       {
         p->all_pages[i].age = p->all_pages[i].age | 0x80000000;
-        *pte &= ~PTE_A;
+        // *pte &= ~PTE_A;
       }
     }
   }
@@ -564,9 +579,9 @@ void scheduler(void)
         c->proc = p;
         swtch(&c->context, &p->context);
 
-#if (defined(NFUA) || defined(LAPA))
-        aging();
-#endif
+        int selection = SELECTION;
+        if (selection == NFUA || selection == LAPA)
+          aging();
 
         // Process is done running for now.
         // It should have changed its p->state before coming back.
@@ -772,7 +787,7 @@ void procdump(void)
   }
 }
 
-int NFUA()
+int NFUA_page()
 {
   struct proc *p = myproc();
   int i;
@@ -807,7 +822,7 @@ int count_ones(int n)
   return counter;
 }
 
-int LAPA()
+int LAPA_page()
 {
   struct proc *p = myproc();
   int i;
@@ -864,7 +879,7 @@ int dequeue(void)
   return index;
 }
 
-int SCFIFO()
+int SCFIFO_page()
 {
   struct proc *p = myproc();
   int index = -1;

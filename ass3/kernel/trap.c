@@ -47,23 +47,28 @@ void usertrap(void)
   // save user program counter.
   p->trapframe->epc = r_sepc();
 
-  if (r_scause() == 13 || r_scause() == 15)
+  int selection = SELECTION;
+
+  if (selection == NFUA || selection == LAPA || selection == SCFIFO)
   {
-    pte_t *pte = walk(p->pagetable, r_stval(), 0);
-    if (*pte & PTE_PG)
+    if (r_scause() == 13 || r_scause() == 15)
     {
-      for (int i = 0; i < MAX_TOTAL_PAGES; i++)
+      pte_t *pte = walk(p->pagetable, r_stval(), 0);
+      if (*pte & PTE_PG)
       {
-        if (r_stval() == p->all_pages[i].v_addr)
+        for (int i = 0; i < MAX_TOTAL_PAGES; i++)
         {
-          page_to_RAM(i);
-          break;
+          if (r_stval() == p->all_pages[i].v_addr)
+          {
+            page_to_RAM(i);
+            break;
+          }
         }
       }
-    }
-    else
-    {
-      panic("no such page");
+      else
+      {
+        panic("no such page");
+      }
     }
   }
 

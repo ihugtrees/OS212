@@ -9,7 +9,7 @@
 
 static int loadseg(pde_t *pgdir, uint64 addr, struct inode *ip, uint offset, uint sz);
 
-void exec_backup_pages(struct pagedata backup_pages[], int backup_proc[])
+void exec_backup_pages(struct pagedata backup_pages[], int backup_proc[], int backup_queue[])
 {
   struct proc *p = myproc();
   int i;
@@ -25,8 +25,8 @@ void exec_backup_pages(struct pagedata backup_pages[], int backup_proc[])
 
   for (i = 0; i < MAX_PSYC_PAGES; i++)
   {
-    // queueBackup[i] = proc->inRAMQueue[i];
-    // proc->inRAMQueue[i] = -1;
+    backup_queue[i] = p->ram_queue[i];
+    p->ram_queue[i] = -1;
   }
 
   backup_proc[0] = p->aloc_pages;
@@ -35,7 +35,7 @@ void exec_backup_pages(struct pagedata backup_pages[], int backup_proc[])
   p->ram_pages = 0;
 }
 
-void exec_restore_pages(struct pagedata backup_pages[], int backup_proc[])
+void exec_restore_pages(struct pagedata backup_pages[], int backup_proc[], int backup_queue[])
 {
   struct proc *p = myproc();
   int i;
@@ -45,10 +45,10 @@ void exec_restore_pages(struct pagedata backup_pages[], int backup_proc[])
     p->all_pages[i].in_RAM = backup_pages[i].in_RAM;
     p->all_pages[i].v_addr = backup_pages[i].v_addr;
   }
-  // for (i = 0; i < MAX_PSYC_PAGES; ++i)
-  // {
-  //   p->inRAMQueue[i] = queueBackup[i];
-  // }
+  for (i = 0; i < MAX_PSYC_PAGES; ++i)
+  {
+    p->ram_queue[i] = backup_queue[i];
+  }
   p->aloc_pages = backup_proc[0];
   p->ram_pages = backup_proc[1];
 }
@@ -66,9 +66,14 @@ int exec(char *path, char **argv)
 
   begin_op();
 
+  int selection = SELECTION;
   struct pagedata backup_pages[MAX_TOTAL_PAGES];
   int backup_proc[2];
-  exec_backup_pages(backup_pages, backup_proc);
+  int backup_queue[MAX_PSYC_PAGES];
+  if (selection == NFUA || selection == LAPA || selection == SCFIFO)
+  {
+    exec_backup_pages(backup_pages, backup_proc, backup_queue);
+  }
 
   if ((ip = namei(path)) == 0)
   {
@@ -166,16 +171,21 @@ int exec(char *path, char **argv)
   p->trapframe->sp = sp;         // initial stack pointer
   proc_freepagetable(oldpagetable, oldsz);
 
-  if (p->pid > 2)
+  if (selection == NFUA || selection == LAPA || selection == SCFIFO)
   {
-    removeSwapFile(p);
-    createSwapFile(p);
+    if (p->pid > 2)
+    {
+      removeSwapFile(p);
+      createSwapFile(p);
+    }
   }
   return argc; // this ends up in a0, the first argument to main(argc, argv)
 
 bad:
-
-  exec_restore_pages(backup_pages, backup_proc);
+  if (selection == NFUA || selection == LAPA || selection == SCFIFO)
+  {
+    exec_restore_pages(backup_pages, backup_proc, backup_queue);
+  }
 
   if (pagetable)
     proc_freepagetable(pagetable, sz);

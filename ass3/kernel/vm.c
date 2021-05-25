@@ -163,21 +163,20 @@ int mappages(pagetable_t pagetable, uint64 va, uint64 size, uint64 pa, int perm)
 int select_page()
 {
   int index = 0;
+  int selection = SELECTION;
 
-#if defined(NFUA)
-  index = NFUA();
-#endif
-
-#if defined(LAPA)
-  index = LAPA();
-#endif
-
-#if defined(SCFIFO)
-  index = SCFIFO();
-#endif
-
-#if defined(NONE)
-#endif
+  if (selection == NFUA)
+  {
+    index = NFUA_page();
+  }
+  else if (selection == LAPA)
+  {
+    index = LAPA_page();
+  }
+  else if (selection == SCFIFO)
+  {
+    index = SCFIFO_page();
+  }
 
   return index;
 }
@@ -217,20 +216,19 @@ void page_to_RAM(int index)
   pte_t *pte = walk(p->pagetable, p->all_pages[index].v_addr, 0);
   *pte = ((*pte | PTE_V) & ~PTE_PG) | PTE_A;
 
-#if defined(NFUA)
-  p->all_pages[index].age = 0;
-#endif
-
-#if defined(LAPA)
-  p->all_pages[index].age = 0xffffffff;
-#endif
-
-#if defined(SCFIFO)
-  enqeue(index);
-#endif
-
-#if defined(NONE)
-#endif
+  int selection = SELECTION;
+  if (selection == NFUA)
+  {
+    p->all_pages[index].age = 0;
+  }
+  else if (selection == LAPA)
+  {
+    p->all_pages[index].age = 0xffffffff;
+  }
+  else if (selection == SCFIFO)
+  {
+    enqueue(index);
+  }
 }
 
 void remove_page(uint64 va)
@@ -274,9 +272,8 @@ void alloc_page(pagetable_t pagetable, uint64 va)
       p->ram_pages++;
       p->aloc_pages++;
 
-#if defined(SCFIFO)
-      enqueue(i);
-#endif
+      if (SELECTION == SCFIFO)
+        enqueue(i);
       break;
     }
   }
@@ -300,8 +297,15 @@ void uvmunmap(pagetable_t pagetable, uint64 va, uint64 npages, int do_free)
       panic("uvmunmap: walk");
     if ((*pte & PTE_V) == 0)
     {
-      if ((*pte & PTE_PG) == 0)
-        panic("uvmunmap: not mapped");
+      if (SELECTION != NONE)
+      {
+        if ((*pte & PTE_PG) == 0)
+          panic("uvmunmap: page not present");
+      }
+      else
+      {
+        panic("uvmunmap: page not present");
+      }
     }
     if (PTE_FLAGS(*pte) == PTE_V)
       panic("uvmunmap: not a leaf");
@@ -370,7 +374,7 @@ uvmalloc(pagetable_t pagetable, uint64 oldsz, uint64 newsz)
       uvmdealloc(pagetable, a, oldsz);
       return 0;
     }
-    if (myproc()->pid > 2)
+    if (SELECTION != NONE && myproc()->pid > 2)
     {
       alloc_page(pagetable, a);
       // pte_t *pte = walk(pagetable, a, 0);
@@ -450,8 +454,15 @@ int uvmcopy(pagetable_t old, pagetable_t new, uint64 sz)
       panic("uvmcopy: pte should exist");
     if ((*pte & PTE_V) == 0)
     {
-      if ((*pte & PTE_PG) == 0)
+      if (SELECTION != NONE)
+      {
+        if ((*pte & PTE_PG) == 0)
+          panic("uvmcopy: page not present");
+      }
+      else
+      {
         panic("uvmcopy: page not present");
+      }
     }
     pa = PTE2PA(*pte);
     flags = PTE_FLAGS(*pte);
