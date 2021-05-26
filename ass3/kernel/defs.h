@@ -116,6 +116,8 @@ int             LAPA_page();
 int             NFUA_page();
 int             enqueue(int index);
 int             dequeue();
+void            alloc_page_data(struct proc *p);
+
 
 
 // swtch.S
