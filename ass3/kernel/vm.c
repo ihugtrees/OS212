@@ -212,7 +212,7 @@ void remove_page(uint64 va) {
             p->all_pages[i].v_addr = 0;
             if (p->all_pages[i].in_RAM) {
                 if (SELECTION == SCFIFO) {
-//                    dequeue();
+//                    dequeue(); //TODO deque with index
                 }
                 p->ram_pages--;
             }
@@ -440,7 +440,7 @@ void uvmclear(pagetable_t pagetable, uint64 va) {
     pte = walk(pagetable, va, 0);
     if (pte == 0)
         panic("uvmclear");
-`    *pte &= ~PTE_U;
+    *pte &= ~PTE_U;
 }
 
 // Copy from kernel to user.
