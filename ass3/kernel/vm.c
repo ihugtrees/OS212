@@ -166,11 +166,12 @@ void page_to_file() {
     struct proc *p = myproc();
     int index = select_page();
 
-    pte_t *pte = walk(p->pagetable, p->all_pages[index].v_addr, 0);
-    printf("before *pte = %x, va = %x\n", *pte, p->all_pages[index].v_addr);
+    uint64 va = p->all_pages[index].v_addr;
+    pte_t *pte = walk(p->pagetable, va, 0);
+    printf("before *pte = %x, va = %x\n", *pte, va);
     *pte = (*pte & (~PTE_V)) | PTE_PG;
     printf("after *pte = %x, pa = %x\n", *pte, PTE2PA(*pte));
-    writeToSwapFile(p, (char *) PTE2PA(*pte), index * PGSIZE, PGSIZE);
+    writeToSwapFile(p, (char *) va, index * PGSIZE, PGSIZE);
     printf("after1 *pte = %d\n", *pte);
     p->all_pages[index].in_RAM = 0;
     p->ram_pages--;
