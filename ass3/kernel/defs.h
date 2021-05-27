@@ -117,7 +117,7 @@ int             NFUA_page();
 int             enqueue(int index);
 int             dequeue();
 void            alloc_page_data(struct proc *p);
-
+int             remove_value(int value);
 
 
 // swtch.S

@@ -761,7 +761,6 @@ int enqueue(int index) {
     struct proc *p = myproc();
     if (p->last == -1) {
         p->last = 0;
-
     }
     if (((p->last) % MAX_PSYC_PAGES) == p->first) {
         return -2;
@@ -769,7 +768,6 @@ int enqueue(int index) {
     if (p->first == -1) {
         p->first = 0;
     }
-
     p->ram_queue[p->last] = index;
     p->last = (p->last + 1) % MAX_PSYC_PAGES;
     return 0;
@@ -777,19 +775,11 @@ int enqueue(int index) {
 
 int dequeue(void) {
     struct proc *p = myproc();
-//  if (p->first == p->last)
-//  {
-//    return -1;
-//  }
     if (p->first == -1) {
         return -2;
     }
 
     int index = p->ram_queue[p->first];
-//    if (p->first - 1 == -1)
-//        index = p->ram_queue[MAX_PSYC_PAGES - 1];
-//    else
-//        index = p->ram_queue[p->first - 1];
 
     p->first = (p->first + 1) % MAX_PSYC_PAGES;
     if (p->first == p->last) {
@@ -797,6 +787,29 @@ int dequeue(void) {
         p->last = -1;
     }
     return index;
+}
+
+int remove_value(int value) {
+    struct proc *p = myproc();
+    for (int i = 0; i < MAX_PSYC_PAGES; i++) {
+        if (p->ram_queue[i] == value) {
+            for (int j = i; j != p->last; j = (j + 1) % MAX_PSYC_PAGES) {
+                p->ram_queue[j] = p->ram_queue[(j + 1) % MAX_PSYC_PAGES];
+            }
+            if (p->last == 0)
+                p->last = MAX_PSYC_PAGES - 1;
+            else
+                p->last = (p->last - 1) % MAX_PSYC_PAGES;
+
+            if (p->last == p->first) {
+                p->last = -1;
+                p->first = -1;
+            }
+
+            return 0;
+        }
+    }
+    return -1;
 }
 
 int SCFIFO_page() {

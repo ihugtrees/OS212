@@ -46,10 +46,12 @@ void usertrap(void) {
 
     int selection = SELECTION;
 
-    if (selection == NFUA || selection == LAPA || selection == SCFIFO) {
+    if (selection != NONE) {
         if (r_scause() == 13 || r_scause() == 15) {
             uint64 va = PGROUNDDOWN(r_stval());
+            printf("va = %d\n", va);
             pte_t *pte = walk(p->pagetable, va, 0);
+            printf("*pte = %d\n", *pte);
             if (*pte & PTE_PG) {
                 for (int i = 0; i < MAX_TOTAL_PAGES; i++) {
                     if (va == p->all_pages[i].v_addr) {
@@ -58,7 +60,7 @@ void usertrap(void) {
                     }
                 }
             } else {
-                panic("no such page");
+                panic("trap no such page");
             }
         }
     }

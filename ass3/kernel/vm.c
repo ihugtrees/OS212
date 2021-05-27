@@ -167,12 +167,15 @@ void page_to_file() {
     int index = select_page();
 
     pte_t *pte = walk(p->pagetable, p->all_pages[index].v_addr, 0);
+    printf("before *pte = %x, va = %x\n", *pte, p->all_pages[index].v_addr);
     *pte = (*pte & (~PTE_V)) | PTE_PG;
-    *pte = PTE2PA(*pte);
-    writeToSwapFile(p, (char *) pte, index * PGSIZE, PGSIZE);
+    printf("after *pte = %x, pa = %x\n", *pte, PTE2PA(*pte));
+    writeToSwapFile(p, (char *) PTE2PA(*pte), index * PGSIZE, PGSIZE);
+    printf("after1 *pte = %d\n", *pte);
     p->all_pages[index].in_RAM = 0;
     p->ram_pages--;
-    kfree(pte);
+    kfree((void *) PTE2PA(*pte));
+    printf("after2 *pte = %d\n", *pte);
     //TODO delete relevant line in tlb
 }
 
@@ -212,7 +215,7 @@ void remove_page(uint64 va) {
             p->all_pages[i].v_addr = 0;
             if (p->all_pages[i].in_RAM) {
                 if (SELECTION == SCFIFO) {
-//                    dequeue(); //TODO deque with index
+                    remove_value(i);
                 }
                 p->ram_pages--;
             }
