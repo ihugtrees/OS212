@@ -168,15 +168,13 @@ void page_to_file() {
 
     uint64 va = p->all_pages[index].v_addr;
     pte_t *pte = walk(p->pagetable, va, 0);
-    printf("before *pte = %x, va = %x\n", *pte, va);
-    *pte = (*pte & (~PTE_V)) | PTE_PG;
-    printf("after *pte = %x, pa = %x\n", *pte, PTE2PA(*pte));
-    writeToSwapFile(p, (char *) va, index * PGSIZE, PGSIZE);
-    printf("after1 *pte = %d\n", *pte);
+//    printf("before *pte = %x, va = %x\n", *pte, va);
+    *pte = *pte | PTE_PG;
+//    printf("after *pte = %x, pa = %x\n", *pte, PTE2PA(*pte));
+    writeToSwapFile(p, (char *) PTE2PA(*pte), index * PGSIZE, PGSIZE);
     p->all_pages[index].in_RAM = 0;
     p->ram_pages--;
     kfree((void *) PTE2PA(*pte));
-    printf("after2 *pte = %d\n", *pte);
     //TODO delete relevant line in tlb
 }
 
@@ -187,7 +185,9 @@ void page_to_RAM(int index) {
     }
 
     uvmalloc(p->pagetable, p->sz, p->sz + PGSIZE);
+//    pte_t *pt = walk(p->pagetable, p->all_pages[index].v_addr, 0);
     uint64 buffer = walkaddr(p->pagetable, p->all_pages[index].v_addr);
+//    printf("*pte = %x, pa = %x, buffer = %x\n", *pt, PTE2PA(*pt), buffer);
     readFromSwapFile(p, (char *) buffer, index * PGSIZE, PGSIZE);
 
     p->all_pages[index].v_addr = p->sz;
@@ -323,7 +323,7 @@ uvmalloc(pagetable_t pagetable, uint64 oldsz, uint64 newsz) {
 
     oldsz = PGROUNDUP(oldsz);
     for (a = oldsz; a < newsz; a += PGSIZE) {
-        printf("procid: %d\n", p->pid);
+//        printf("procid: %d\n", p->pid);
         if (SELECTION != NONE && myproc()->pid > 2) {
             if (p->aloc_pages >= MAX_TOTAL_PAGES) {
                 panic("exceeded maximum total pages");

@@ -153,12 +153,6 @@ allocproc(void) {
         return 0;
     }
 
-    // Set up new context to start executing at forkret,
-    // which returns to user space.
-    memset(&p->context, 0, sizeof(p->context));
-    p->context.ra = (uint64) forkret;
-    p->context.sp = p->kstack + PGSIZE;
-
     //============================================================ Q1 ============================================================//
     // int selection = SELECTION;
     // if (selection == NFUA || selection == LAPA || selection == SCFIFO)
@@ -166,11 +160,22 @@ allocproc(void) {
         alloc_page_data(p);
         p->swapFile = 0;
         if (p->pid > 2) {
+            printf("allocproc noff %d\n", mycpu()->noff);
             release(&p->lock);
+            printf("allocproc2 noff %d\n", mycpu()->noff);
             createSwapFile(p);
+            printf("allocproc3 noff %d\n", mycpu()->noff);
             acquire(&p->lock);
+            printf("allocproc4 noff %d\n", mycpu()->noff);
         }
     }
+
+    // Set up new context to start executing at forkret,
+    // which returns to user space.
+    memset(&p->context, 0, sizeof(p->context));
+    p->context.ra = (uint64) forkret;
+    p->context.sp = p->kstack + PGSIZE;
+
     return p;
 }
 
@@ -546,8 +551,10 @@ void sched(void) {
 
     if (!holding(&p->lock))
         panic("sched p->lock");
-    if (mycpu()->noff != 1)
+    if (mycpu()->noff != 1) {
+        printf("noff %d\n", mycpu()->noff);
         panic("sched locks");
+    }
     if (p->state == RUNNING)
         panic("sched running");
     if (intr_get())

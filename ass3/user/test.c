@@ -46,6 +46,7 @@ volatile int main(int argc, char *argv[]) {
 		}
 		printf("\n");
 	}
+    printf("DONE\n");
 
 	int k, status=0;
 	int pid = fork();
