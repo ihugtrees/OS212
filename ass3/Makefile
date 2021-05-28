@@ -143,8 +143,7 @@ UPROGS=\
 	$U/_ftest\
 	$U/_ftest2\
 	$U/_loadtest\
-	$U/_memtest1\
-	$U/_memtest2\
+	$U/_mem\
 
 fs.img: mkfs/mkfs README $(UPROGS)
 	mkfs/mkfs fs.img README $(UPROGS)
