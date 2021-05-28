@@ -51,7 +51,7 @@ void usertrap(void) {
             uint64 va = PGROUNDDOWN(r_stval());
             printf("\ntrap va = %d\n", va);
             pte_t *pte = walk(p->pagetable, va, 0);
-            printf("*pte = %d\n", *pte);
+//            printf("*pte = %d\n", *pte);
             if (*pte & PTE_PG) {
                 for (int i = 0; i < MAX_TOTAL_PAGES; i++) {
                     if (va == p->all_pages[i].v_addr) {
