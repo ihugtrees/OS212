@@ -140,8 +140,11 @@ UPROGS=\
 	$U/_zombie\
 	$U/_lazytests\
 	$U/_test\
-	# $U/_forkTest1\
-	# $U/_loadTest\
+	$U/_ftest\
+	$U/_ftest2\
+	$U/_loadtest\
+	$U/_memtest1\
+	$U/_memtest2\
 
 fs.img: mkfs/mkfs README $(UPROGS)
 	mkfs/mkfs fs.img README $(UPROGS)

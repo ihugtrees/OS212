@@ -11,14 +11,15 @@
 
 #define N_PAGES 24
 
-char* data[N_PAGES];
+char *data[N_PAGES];
 
-volatile int main(int argc, char *argv[]) {
+volatile int main(int argc, char *argv[])
+{
 
 	int i = 0;
 	int n = N_PAGES;
 
-	for (i = 0; i < n ;)
+	for (i = 0; i < n;)
 	{
 		data[i] = sbrk(PGSIZE);
 		data[i][0] = 00 + i;
@@ -36,63 +37,71 @@ volatile int main(int argc, char *argv[]) {
 	printf("\nIterate through pages seq:\n");
 
 	int j;
-	for(j = 1; j < n; j++)
+	for (j = 1; j < n; j++)
 	{
-		printf("j:  %d\n",j);
+		printf("j:  %d\n", j);
 
-		for(i = 0; i < j; i++) {
+		for (i = 0; i < j; i++)
+		{
 			data[i][10] = 2; // access to the i-th page
-			printf("%d, ",i);
+			printf("%d, ", i);
 		}
 		printf("\n");
 	}
-    printf("DONE\n");
+	printf("DONE\n");
 
-	int k, status=0;
+	int k, status = 0;
 	int pid = fork();
 	if (pid)
 		wait(&status);
-	else {
+	else
+	{
 		printf("\nGo through same 8 pages and different 8 others\n");
-		for(j = 0; j < 8; j++){
-			for(i = 20; i < 24; i++) {
+		for (j = 0; j < 8; j++)
+		{
+			for (i = 20; i < 24; i++)
+			{
 				data[i][10] = 1;
-				printf("%d, ",i);
+				printf("%d, ", i);
 			}
 			printf("\n");
-			switch (j%4) {
+			switch (j % 4)
+			{
 			case 0:
-				for(k = 0; k < 4; k++) {
+				for (k = 0; k < 4; k++)
+				{
 					data[k][10] = 1;
-					printf("%d, ",k);
+					printf("%d, ", k);
 				}
 				break;
 			case 1:
-				for(k = 4; k < 8; k++) {
+				for (k = 4; k < 8; k++)
+				{
 					data[k][10] = 1;
-					printf("%d, ",k);
+					printf("%d, ", k);
 				}
 				break;
 			case 2:
-				for(k = 8; k < 12; k++) {
+				for (k = 8; k < 12; k++)
+				{
 					data[k][10] = 1;
-					printf("%d, ",k);
+					printf("%d, ", k);
 				}
 				break;
 			case 3:
-				for(k = 12; k < 16; k++) {
+				for (k = 12; k < 16; k++)
+				{
 					data[k][10] = 1;
-					printf("%d, ",k);
+					printf("%d, ", k);
 				}
 				break;
 			}
-			
-			// data[j][10] = 0;
-			// printf("%d, ",j);
+
+			data[j][10] = 0;
+			printf("%d, ",j);
 			printf("\n");
 		}
 	}
 	exit(1);
 	return 0;
 }
-	

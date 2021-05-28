@@ -49,7 +49,7 @@ void usertrap(void) {
     if (selection != NONE) {
         if (r_scause() == 13 || r_scause() == 15) {
             uint64 va = PGROUNDDOWN(r_stval());
-            printf("va = %d\n", va);
+            printf("\ntrap va = %d\n", va);
             pte_t *pte = walk(p->pagetable, va, 0);
             printf("*pte = %d\n", *pte);
             if (*pte & PTE_PG) {
