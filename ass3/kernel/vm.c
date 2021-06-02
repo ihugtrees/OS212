@@ -162,20 +162,32 @@ int select_page() {
     return index;
 }
 
+int find_free_place(void){
+    struct proc *p = myproc();
+    for(int i=0; i<MAX_PSYC_PAGES; i++){
+        if(p->occupied[i]==0) return i;
+    }
+    return -1;
+}
+
 void page_to_file() {
     struct proc *p = myproc();
     int index = select_page();
+    int free_place;
+    if ((free_place = find_free_place()) == -1) panic("hazak");
+    // printf("freeplace=%d", free_place);
+    p->all_pages[index].file_offset_in_swap = free_place;
 
     uint64 va = p->all_pages[index].v_addr;
     pte_t *pte = walk(p->pagetable, va, 0);
-//    printf("before *pte = %x, va = %x\n", *pte, va);
-    *pte = *pte | PTE_PG;
-//    printf("after *pte = %x, pa = %x\n", *pte, PTE2PA(*pte));
-    writeToSwapFile(p, (char *) PTE2PA(*pte), index * PGSIZE, PGSIZE);
+    // printf("infile%d", p->in_file);
+    writeToSwapFile(p, (char *) PTE2PA(*pte), free_place * PGSIZE, PGSIZE);
     p->all_pages[index].in_RAM = 0;
+    p->in_file++;
     p->ram_pages--;
+    p->occupied[free_place] = 1;
     kfree((void *) PTE2PA(*pte));
-    //TODO delete relevant line in tlb
+    *pte =  ((*pte & (~ PTE_V))  | PTE_PG); 
 }
 
 void page_to_RAM(int index) {
@@ -184,18 +196,17 @@ void page_to_RAM(int index) {
         page_to_file();
     }
 
-    uvmalloc(p->pagetable, p->sz, p->sz + PGSIZE);
-//    pte_t *pt = walk(p->pagetable, p->all_pages[index].v_addr, 0);
-    uint64 buffer = walkaddr(p->pagetable, p->all_pages[index].v_addr);
-//    printf("*pte = %x, pa = %x, buffer = %x\n", *pt, PTE2PA(*pt), buffer);
-    readFromSwapFile(p, (char *) buffer, index * PGSIZE, PGSIZE);
-
-    p->all_pages[index].v_addr = p->sz;
+    void *mem = kalloc();
+    if(mem == 0)
+        panic("ssssss");
+    if(mappages(p->pagetable, p->all_pages[index].v_addr, PGSIZE, (uint64)mem, PTE_W|PTE_X|PTE_R|PTE_U) == -1)
+        panic("ss");
+    if (readFromSwapFile(p, (char *) mem, p->all_pages[index].file_offset_in_swap * PGSIZE, PGSIZE) == -1) panic("niv katan zoek");
+    p->in_file--;
+    p->occupied[p->all_pages[index].file_offset_in_swap] = 0;
+    // printf("index=%d", index);
     p->all_pages[index].in_RAM = 1;
     p->ram_pages++;
-
-    pte_t *pte = walk(p->pagetable, p->all_pages[index].v_addr, 0);
-    *pte = ((*pte | PTE_V) & ~PTE_PG) | PTE_A;
 
     int selection = SELECTION;
     if (selection == NFUA) {
@@ -205,6 +216,7 @@ void page_to_RAM(int index) {
     } else if (selection == SCFIFO) {
         enqueue(index);
     }
+    // printf("inhere!");
 }
 
 void remove_page(uint64 va) {
@@ -212,20 +224,29 @@ void remove_page(uint64 va) {
 
     for (int i = 0; i < MAX_TOTAL_PAGES; i++) {
         if (p->all_pages[i].is_allocated != 0 && p->all_pages[i].v_addr == va) {
-            p->all_pages[i].is_allocated = 0;
-            p->all_pages[i].v_addr = 0;
             if (p->all_pages[i].in_RAM) {
+                p->all_pages[i].is_allocated = 0;
+                p->all_pages[i].v_addr = 0;
+                
                 if (SELECTION == SCFIFO) {
                     remove_value(i);
                 }
                 p->ram_pages--;
+
+            
+                p->all_pages[i].in_RAM = 0;
+                p->aloc_pages--;
+                if (SELECTION == LAPA) {
+                    p->all_pages[i].age = 0xffffffff;
+                } else {
+                    p->all_pages[i].age = 0;
+                }
+            
             }
-            p->all_pages[i].in_RAM = 0;
-            p->aloc_pages--;
-            if (SELECTION == LAPA) {
-                p->all_pages[i].age = 0xffffffff;
-            } else {
-                p->all_pages[i].age = 0;
+            else{
+                // p->in_file--;
+                // p->occupied[p->all_pages[i].file_offset_in_swap] = 0;
+                p->all_pages[i].in_RAM=0;
             }
             break;
         }
@@ -277,7 +298,7 @@ void uvmunmap(pagetable_t pagetable, uint64 va, uint64 npages, int do_free) {
             uint64 pa = PTE2PA(*pte);
             kfree((void *) pa);
         }
-        if (SELECTION != NONE) {
+        if (SELECTION != NONE && myproc()->pid > 2){
             remove_page(a);
         }
         *pte = 0;
@@ -322,9 +343,11 @@ uvmalloc(pagetable_t pagetable, uint64 oldsz, uint64 newsz) {
         return oldsz;
 
     oldsz = PGROUNDUP(oldsz);
+    uint64 old_oldsz = oldsz;
     for (a = oldsz; a < newsz; a += PGSIZE) {
-//        printf("procid: %d\n", p->pid);
-        if (SELECTION != NONE && myproc()->pid > 2) {
+        // printf("a: %d\n", a);
+
+        if (SELECTION != NONE && myproc()->pid > 2 && a >= old_oldsz+PGSIZE) {
             if (p->aloc_pages >= MAX_TOTAL_PAGES) {
                 panic("exceeded maximum total pages");
             }
@@ -344,7 +367,8 @@ uvmalloc(pagetable_t pagetable, uint64 oldsz, uint64 newsz) {
             return 0;
         }
 
-        if (SELECTION != NONE && myproc()->pid > 2) {
+        if (SELECTION != NONE && myproc()->pid > 2 && a >= old_oldsz+PGSIZE) {
+            old_oldsz+=PGSIZE;
             alloc_page(a);
 //             pte_t *pte = walk(pagetable, a, 0);
 //             *pte = PTE_V | (*pte);
@@ -428,7 +452,13 @@ int uvmcopy(pagetable_t old, pagetable_t new, uint64 sz) {
             kfree(mem);
             goto err;
         }
+        if(*pte & PTE_PG){
+            pte_t *temp = walk(new,i,0);
+            *temp = (*temp &(~PTE_V));
+            kfree(mem);
+        }
     }
+    
     return 0;
 
     err:
