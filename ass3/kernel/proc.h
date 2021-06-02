@@ -97,6 +97,7 @@ struct pagedata
 {
   int is_allocated;
   int in_RAM;
+  int file_offset;
   uint64 v_addr;
   uint age;
 };
@@ -133,12 +134,13 @@ struct proc
   int aloc_pages;
   int ram_pages;
 
+  int ram_queue[MAX_PSYC_PAGES];
+  int file_offsets[MAX_PSYC_PAGES];
+  int first;
+  int last;
+
   // int numberOfPagedOut;        // number of pages in the swap file
   // int numberOfPageFaults;      // the number of times a page fault has occurred
   // int totalNumberOfPagedOut;   // the number of times a page was moved to swap file
-
-  int ram_queue[MAX_PSYC_PAGES];
-  int first;
-  int last;
   // int availableOffsetQueue[MAX_PSYC_PAGES];
 };

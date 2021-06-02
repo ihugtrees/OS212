@@ -106,13 +106,14 @@ void alloc_page_data(struct proc *p)
     p->ram_pages = 0;
     p->first = -1;
     p->last = -1;
+    p->swapFile = 0;
 
     for (int i = 0; i < MAX_TOTAL_PAGES; i++)
     {
         p->all_pages[i].is_allocated = 0;
-        p->all_pages[i].v_addr = 0;
+        p->all_pages[i].v_addr = -1;
         p->all_pages[i].in_RAM = 0;
-        p->all_pages[i].age = 0;
+        p->all_pages[i].file_offset = -1;
 
         if (SELECTION == LAPA)
         {
@@ -127,6 +128,7 @@ void alloc_page_data(struct proc *p)
     for (int i = 0; i < MAX_PSYC_PAGES; i++)
     {
         p->ram_queue[i] = -1;
+        p->file_offsets[i] = -1;
     }
 }
 
@@ -176,17 +178,12 @@ found:
 
     //============================================================ Q1 ============================================================//
     // int selection = SELECTION;
-    // if (selection == NFUA || selection == LAPA || selection == SCFIFO)
-    if (SELECTION != NONE)
+    if (SELECTION != NONE && p->pid > 2)
     {
         alloc_page_data(p);
-        p->swapFile = 0;
-        if (p->pid > 2)
-        {
-            release(&p->lock);
-            createSwapFile(p);
-            acquire(&p->lock);
-        }
+        release(&p->lock);
+        createSwapFile(p);
+        acquire(&p->lock);
     }
 
     // Set up new context to start executing at forkret,
@@ -220,7 +217,7 @@ freeproc(struct proc *p)
     p->state = UNUSED;
 
     //============================================================ Q1 ============================================================//
-    if (SELECTION != NONE)
+    if (SELECTION != NONE && p->pid > 2)
     {
         alloc_page_data(p);
     }
@@ -367,40 +364,42 @@ int fork(void)
     safestrcpy(np->name, p->name, sizeof(p->name));
 
     pid = np->pid;
-    if (SELECTION != NONE)
+    if ((SELECTION != NONE) && pid > 2)
     {
-        if (pid > 2)
-        {
-            release(&np->lock);
-            createSwapFile(np);
-            acquire(&np->lock);
-            np->aloc_pages = p->aloc_pages;
-            np->ram_pages = p->ram_pages;
-            int i;
-            char *newPage = kalloc();
-            for (i = 0; i < MAX_TOTAL_PAGES; i++)
-            {
-                np->all_pages[i].is_allocated = p->all_pages[i].is_allocated;
-                np->all_pages[i].in_RAM = p->all_pages[i].in_RAM;
-                np->all_pages[i].v_addr = p->all_pages[i].v_addr;
-                np->all_pages[i].age = p->all_pages[i].age;
-                if (np->all_pages[i].is_allocated && !np->all_pages[i].in_RAM)
-                {
-                    release(&np->lock);
-                    readFromSwapFile(p, newPage, i * PGSIZE, PGSIZE);
-                    writeToSwapFile(np, newPage, i * PGSIZE, PGSIZE);
-                    acquire(&np->lock);
-                }
-            }
-            for (i = 0; i < MAX_PSYC_PAGES; i++)
-            {
-                np->ram_queue[i] = p->ram_queue[i];
-            }
-            np->first = p->first;
-            np->last = p->last;
+        release(&np->lock);
+        createSwapFile(np);
+        acquire(&np->lock);
 
-            kfree(newPage);
+        np->aloc_pages = p->aloc_pages;
+        np->ram_pages = p->ram_pages;
+        np->first = p->first;
+        np->last = p->last;
+
+        int i;
+        char *temp = kalloc();
+        memset(temp, 0, PGSIZE);
+        for (i = 0; i < MAX_TOTAL_PAGES; i++)
+        {
+            np->all_pages[i].is_allocated = p->all_pages[i].is_allocated;
+            np->all_pages[i].in_RAM = p->all_pages[i].in_RAM;
+            np->all_pages[i].v_addr = p->all_pages[i].v_addr;
+            np->all_pages[i].age = p->all_pages[i].age;
+            np->all_pages[i].file_offset = p->all_pages[i].file_offset;
+            if (np->all_pages[i].is_allocated && np->all_pages[i].in_RAM == 0)
+            {
+                release(&np->lock);
+                readFromSwapFile(p, temp, p->all_pages[i].file_offset * PGSIZE, PGSIZE);
+                writeToSwapFile(np, temp, np->all_pages[i].file_offset * PGSIZE, PGSIZE);
+                acquire(&np->lock);
+            }
         }
+        for (i = 0; i < MAX_PSYC_PAGES; i++)
+        {
+            np->ram_queue[i] = p->ram_queue[i];
+            np->file_offsets[i] = p->file_offsets[i];
+        }
+
+        kfree(temp);
     }
 
     release(&np->lock);
