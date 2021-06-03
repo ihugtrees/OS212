@@ -61,6 +61,8 @@ void usertrap(void) {
                     }
                 }
             } else {
+                printf("rstval=%p\n", r_stval());
+                printf("intrap=%p\n", PGROUNDDOWN(r_stval()));
                 panic("trap no such page");
             }
         }

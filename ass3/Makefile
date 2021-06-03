@@ -144,6 +144,7 @@ UPROGS=\
 	$U/_ftest2\
 	$U/_loadtest\
 	$U/_mem\
+  	$U/_our_tests\
 
 fs.img: mkfs/mkfs README $(UPROGS)
 	mkfs/mkfs fs.img README $(UPROGS)
