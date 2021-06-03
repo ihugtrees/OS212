@@ -106,7 +106,7 @@ void alloc_page_data(struct proc *p)
     p->ram_pages = 0;
     p->first = -1;
     p->last = -1;
-    p->swapFile = 0;
+    // p->swapFile = 0;
     p->in_file = 0;
 
     for (int i = 0; i < MAX_TOTAL_PAGES; i++)
@@ -375,39 +375,44 @@ int fork(void)
         np->ram_pages = p->ram_pages;
         np->first = p->first;
         np->last = p->last;
-        //np->all_pages[i].file_offset_in_swap = p->all_pages[i].file_offset_in_swap;
+        np->in_file = p->in_file;
 
         int i;
         char *temp = kalloc();
-        // memset(temp, 0, PGSIZE);
+        memset(temp, 0, PGSIZE);
         int offset=0;
 
-        np->in_file = p->in_file;
         for (i = 0; i < MAX_TOTAL_PAGES; i++)
         {
             np->all_pages[i].is_allocated = p->all_pages[i].is_allocated;
             np->all_pages[i].in_RAM = p->all_pages[i].in_RAM;
             np->all_pages[i].v_addr = p->all_pages[i].v_addr;
             np->all_pages[i].age = p->all_pages[i].age;
-            //np->all_pages[i].file_offset_in_swap = p->all_pages[i].file_offset_in_swap;
+
             if (np->all_pages[i].is_allocated && np->all_pages[i].in_RAM == 0)
             {
                 
-                np->all_pages[i].file_offset_in_swap = offset;
-                np->occupied[offset]=1;
+                np->all_pages[i].file_offset_in_swap = offset; 
+                np->occupied[offset] = 1;
                 printf("off set in swap %d  va %p\n",np->all_pages[i].file_offset_in_swap,np->all_pages[i].v_addr);
                 release(&np->lock);
                 readFromSwapFile(p, temp, p->all_pages[i].file_offset_in_swap * PGSIZE, PGSIZE);
+                if(i == 24){
+                    printf("offsetinswap=%d,temp=%p",p->all_pages[i].file_offset_in_swap, temp);
+
+                    printf("offsetinswap=%d,temp=%p",np->all_pages[i].file_offset_in_swap, temp);
+                }
                 writeToSwapFile(np, temp, np->all_pages[i].file_offset_in_swap * PGSIZE, PGSIZE);
+                if(i == 24){
+                    printf("offsetinswap=%d,temp=%p",np->all_pages[i].file_offset_in_swap, temp);
+                }
                 acquire(&np->lock);
                 offset++;
-                // printf("inhere%d", i);
             }
         }
         for (i = 0; i < MAX_PSYC_PAGES; i++)
         {
             np->ram_queue[i] = p->ram_queue[i];
-            // np->file_offsets[i] = p->file_offsets[i];
         }
 
         kfree(temp);

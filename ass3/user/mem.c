@@ -84,13 +84,13 @@ void fork_test(int num)
             printf(".");
             if (buffers[i][0] != i)
                 {
-                    printf("va fail :%p    %d : %d\n", &buffers[i][0],buffers[i][0], i);
+                    // printf("va fail :%p    %d : %d\n", &buffers[i][0],buffers[i][0], i);
                     printf("fork_test failed (%d != %d)...\n", buffers[i][0], i);
-                    //exit(0);
+                    exit(0);
                 }
-                else{
-                    printf("va okay :%p    %d : %d\n", &buffers[i][0],buffers[i][0], i);
-                }
+                // else{
+                //     printf("va okay :%p    %d : %d\n", &buffers[i][0],buffers[i][0], i);
+                // }
             
             // if (buffers[i][0] != i)
             // {
@@ -198,13 +198,19 @@ int main(int argc, char *argv[])
     }
     else if (argc == 4)
     {
-        printf("myMemTest starting...\n");
+        printf("1...\n");
         fork_test(1);
-        malloc_test(1);
-        malloc_test(2);
-        malloc_test(3);
+        // printf("2...\n");
+        // malloc_test(1);
+        // printf("3...\n");
+        // malloc_test(2);
+        // printf("4...\n");
+        // malloc_test(3);
+        printf("5...\n");
         fork_test(2);
-        malloc_test(4);
+        // printf("6...\n");
+        // malloc_test(4);
+        printf("end...\n");
     }
     else
     {
