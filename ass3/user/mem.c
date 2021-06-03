@@ -91,7 +91,7 @@ void fork_test(int num)
                 else{
                     // printf("va okay :%p    %d : %d\n", &buffers[i][0],buffers[i][0], i);
                 }
-            
+
             if (buffers[i][0] != i)
             {
                 printf("fork_test failed (%d != %d)...\n", buffers[i][0], i);
@@ -157,7 +157,7 @@ void policy_test()
             int index = order[i];
             for (int j = 0; j < 50; j++)
             {
-                
+
                 if (buffers[index][j] != index * j)
                 {
                     // printf("va fail :%p    %d : %d\n", &buffers[index][j],buffers[index][j], index*j);
@@ -200,14 +200,16 @@ int main(int argc, char *argv[])
     {
         printf("1...\n");
         fork_test(1);
-        // printf("2...\n");
-        // malloc_test(1);
-        // printf("3...\n");
-        // malloc_test(2);
-        // printf("4...\n");
-        // malloc_test(3);
-        printf("5...\n");
+         printf("2...\n");
+         malloc_test(1);
         fork_test(2);
+         printf("3...\n");
+        fork_test(3);
+         malloc_test(2);
+         printf("4...\n");
+         malloc_test(3);
+        printf("5...\n");
+        fork_test(4);
         // printf("6...\n");
         // malloc_test(4);
         printf("end...\n");

@@ -406,12 +406,13 @@ int fork(void)
                 // printf("child - offsetinswap=%d,temp=%p\n", np->all_pages[i].file_offset_in_swap, temp);
                 // memset(temp, 0, PGSIZE);
                 // writeToSwapFile(np, temp, np->all_pages[i].file_offset_in_swap * PGSIZE, PGSIZE);
-                readFromSwapFile(p, temp, p->all_pages[i].file_offset_in_swap * PGSIZE, PGSIZE);
-                writeToSwapFile(np, temp, np->all_pages[i].file_offset_in_swap * PGSIZE, PGSIZE);
                 if (i == 24)
                 {
                     // printf("offsetinswap=%d,temp=%p", np->all_pages[i].file_offset_in_swap, temp);
                 }
+                readFromSwapFile(p, temp, p->all_pages[i].file_offset_in_swap * PGSIZE, PGSIZE);
+                writeToSwapFile(np, temp, np->all_pages[i].file_offset_in_swap * PGSIZE, PGSIZE);
+
                 acquire(&np->lock);
                 offset++;
             }

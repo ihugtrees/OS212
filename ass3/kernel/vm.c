@@ -210,6 +210,7 @@ void page_to_file()
     p->occupied[free_place] = 1;
     kfree((void *)PTE2PA(*pte));
     *pte = ((*pte & (~PTE_V)) | PTE_PG);
+    sfence_vma();
 }
 
 void page_to_RAM(int index)
@@ -281,7 +282,7 @@ void remove_page(uint64 va)
             }
             else
             {
-                p->all_pages[i].in_RAM = 0;
+//                p->all_pages[i].in_RAM = 0;
             }
             break;
         }
