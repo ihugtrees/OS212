@@ -206,7 +206,6 @@ void page_to_file()
     // printf("infile%d", p->in_file);
     writeToSwapFile(p, (char *)PTE2PA(*pte), free_place * PGSIZE, PGSIZE);
     p->all_pages[index].in_RAM = 0;
-    p->in_file++;
     p->ram_pages--;
     p->occupied[free_place] = 1;
     kfree((void *)PTE2PA(*pte));
@@ -228,7 +227,6 @@ void page_to_RAM(int index)
         panic("ss");
     if (readFromSwapFile(p, (char *)mem, p->all_pages[index].file_offset_in_swap * PGSIZE, PGSIZE) == -1)
         panic("niv katan zoek");
-    p->in_file--;
     p->occupied[p->all_pages[index].file_offset_in_swap] = 0;
     // printf("index=%d", index);
     p->all_pages[index].in_RAM = 1;

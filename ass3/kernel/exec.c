@@ -16,24 +16,16 @@ void exec_backup_pages(struct pagedata backup_pages[], int backup_proc[], int ba
         backup_pages[i].is_allocated = p->all_pages[i].is_allocated;
         backup_pages[i].in_RAM = p->all_pages[i].in_RAM;
         backup_pages[i].v_addr = p->all_pages[i].v_addr;
-//        p->all_pages[i].is_allocated = 0;
-//        p->all_pages[i].in_RAM = 0;
-//        p->all_pages[i].v_addr = 0;
     }
 
     for (i = 0; i < MAX_PSYC_PAGES; i++) {
         backup_queue[i] = p->ram_queue[i];
-//        p->ram_queue[i] = -1;
     }
 
     backup_proc[0] = p->aloc_pages;
     backup_proc[1] = p->ram_pages;
     backup_proc[2] = p->first;
     backup_proc[3] = p->last;
-//    p->aloc_pages = 0;
-//    p->ram_pages = 0;
-//    p->first = -1;
-//    p->last = -1;
     alloc_page_data(p);
 }
 

@@ -139,7 +139,7 @@ void policy_test()
     printf("      initiating\n");
     for (int i = 0; i < POLICY_BUFFERS_NUM; i++)
     {
-        printf("%d",i);
+        // printf("%d",i);
         buffers[i] = malloc(PGSIZE);
         for (int j = 0; j < BUFFERS_SIZE; j++)
         {

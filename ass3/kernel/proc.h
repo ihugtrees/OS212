@@ -97,10 +97,9 @@ struct pagedata
 {
   int is_allocated;
   int in_RAM;
-  int file_offset;
+  int file_offset_in_swap;
   uint64 v_addr;
   uint age;
-  int file_offset_in_swap;
 };
 
 // Per-process state
@@ -134,11 +133,9 @@ struct proc
   struct pagedata all_pages[MAX_TOTAL_PAGES];
   int aloc_pages;
   int ram_pages;
-  int in_file;
-  int occupied[MAX_PSYC_PAGES];
 
+  int occupied[MAX_PSYC_PAGES];
   int ram_queue[MAX_PSYC_PAGES];
-  int file_offsets[MAX_PSYC_PAGES];
   int first;
   int last;
 
