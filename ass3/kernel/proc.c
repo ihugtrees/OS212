@@ -380,7 +380,7 @@ int fork(void)
         int i;
         char *temp = kalloc();
         memset(temp, 0, PGSIZE);
-        int offset=0;
+        int offset = 0;
 
         for (i = 0; i < MAX_TOTAL_PAGES; i++)
         {
@@ -391,20 +391,21 @@ int fork(void)
 
             if (np->all_pages[i].is_allocated && np->all_pages[i].in_RAM == 0)
             {
-                
-                np->all_pages[i].file_offset_in_swap = offset; 
+
+                np->all_pages[i].file_offset_in_swap = offset;
                 np->occupied[offset] = 1;
-                printf("off set in swap %d  va %p\n",np->all_pages[i].file_offset_in_swap,np->all_pages[i].v_addr);
+                //                printf("off set in swap %d  va %p\n",np->all_pages[i].file_offset_in_swap,np->all_pages[i].v_addr);
                 release(&np->lock);
                 readFromSwapFile(p, temp, p->all_pages[i].file_offset_in_swap * PGSIZE, PGSIZE);
-                if(i == 24){
-                    printf("offsetinswap=%d,temp=%p",p->all_pages[i].file_offset_in_swap, temp);
-
-                    printf("offsetinswap=%d,temp=%p",np->all_pages[i].file_offset_in_swap, temp);
+                if (i == 24)
+                {
+                    //                    printf("offsetinswap=%d,temp=%p",p->all_pages[i].file_offset_in_swap, temp);
+                    //                    printf("offsetinswap=%d,temp=%p",np->all_pages[i].file_offset_in_swap, temp);
                 }
                 writeToSwapFile(np, temp, np->all_pages[i].file_offset_in_swap * PGSIZE, PGSIZE);
-                if(i == 24){
-                    printf("offsetinswap=%d,temp=%p",np->all_pages[i].file_offset_in_swap, temp);
+                if (i == 24)
+                {
+                    //                    printf("offsetinswap=%d,temp=%p",np->all_pages[i].file_offset_in_swap, temp);
                 }
                 acquire(&np->lock);
                 offset++;

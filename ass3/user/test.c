@@ -1,107 +1,102 @@
 
 #include "kernel/param.h"
 #include "kernel/types.h"
-#include "kernel/stat.h"
 #include "user.h"
-#include "kernel/fs.h"
-#include "kernel/fcntl.h"
-#include "kernel/syscall.h"
-#include "kernel/memlayout.h"
-#include "kernel/riscv.h"
 
-#define N_PAGES 24
+#define PAGESIZE 4096
+#define NUMPAGES 20
 
-char *data[N_PAGES];
-
-volatile int main(int argc, char *argv[])
+void free_pages(int *pages[])
 {
+    for (int i = 0; i < NUMPAGES; i++)
+    {
+        free(pages[i]);
+    }
+}
 
-	int i = 0;
-	int n = N_PAGES;
+void test_accessing_different_pages()
+{
+    int time = uptime();
+    int *pages[NUMPAGES];
 
-	for (i = 0; i < n;)
-	{
-		data[i] = sbrk(PGSIZE);
-		data[i][0] = 00 + i;
-		data[i][1] = 10 + i;
-		data[i][2] = 20 + i;
-		data[i][3] = 30 + i;
-		data[i][4] = 40 + i;
-		data[i][5] = 50 + i;
-		data[i][6] = 60 + i;
-		data[i][7] = 70 + i;
-		printf("allocated new page #%d at address: %x\n", i, data[i]);
-		i++;
-	}
+    for (int i = 0; i < NUMPAGES; i++)
+    {
+        pages[i] = malloc(PAGESIZE);
+        for (int j = 0; j < ((PAGESIZE / sizeof(int))); j++)
+        {
+            // printf("i=%d,j=%d,pages[i]=%x,pages[i]+j=%x\n", i, j, pages[i], (pages[i]+j));
+            *(pages[i] + j) = i * j;
+            // printf("%d*%d=%d\n", i, j, *(pages[i]+j));
+        }
+    }
 
-	printf("\nIterate through pages seq:\n");
+    for (int i = 0; i < NUMPAGES; i++)
+    {
+        for (int j = 0; j < ((PAGESIZE / sizeof(int))); j++)
+        {
+            if (*(pages[i] + j) != (i * j))
+            {
+                printf("test accessing different pages failed %d != %d\n", (pages[i] + j), (i * j)); //suppose to be i*j
+            }
+        }
+    }
 
-	int j;
-	for (j = 1; j < n; j++)
-	{
-		printf("j:  %d\n", j);
+    free_pages(pages);
+    time = uptime() - time;
 
-		for (i = 0; i < j; i++)
-		{
-			data[i][10] = 2; // access to the i-th page
-			printf("%d, ", i);
-		}
-		printf("\n");
-	}
-	printf("DONE\n");
+    printf("test accessing different pages passed, time %d\n", time);
+}
 
-	int k, status = 0;
-	int pid = fork();
-	if (pid)
-		wait(&status);
-	else
-	{
-		printf("\nGo through same 8 pages and different 8 others\n");
-		for (j = 0; j < 8; j++)
-		{
-			for (i = 20; i < 24; i++)
-			{
-				data[i][10] = 1;
-				printf("%d, ", i);
-			}
-			printf("\n");
-			switch (j % 4)
-			{
-			case 0:
-				for (k = 0; k < 4; k++)
-				{
-					data[k][10] = 1;
-					printf("%d, ", k);
-				}
-				break;
-			case 1:
-				for (k = 4; k < 8; k++)
-				{
-					data[k][10] = 1;
-					printf("%d, ", k);
-				}
-				break;
-			case 2:
-				for (k = 8; k < 12; k++)
-				{
-					data[k][10] = 1;
-					printf("%d, ", k);
-				}
-				break;
-			case 3:
-				for (k = 12; k < 16; k++)
-				{
-					data[k][10] = 1;
-					printf("%d, ", k);
-				}
-				break;
-			}
+void test_fork()
+{
+    int time = uptime();
 
-			data[j][10] = 0;
-			printf("%d, ",j);
-			printf("\n");
-		}
-	}
-	exit(1);
-	return 0;
+    int *pages[NUMPAGES];
+
+    printf("allocating memory to parent proccess\n");
+    for (int i = 0; i < NUMPAGES; i++)
+    {
+        pages[i] = malloc(PAGESIZE);
+        for (int j = 0; j < ((PAGESIZE / sizeof(int))); j++)
+        {
+            // printf("i=%d,j=%d,pages[i]=%x,pages[i]+j=%x\n", i, j, pages[i], (pages[i]+j));
+            *(pages[i] + j) = i * j;
+            // printf("%d*%d=%d\n", i, j, *(pages[i]+j));
+        }
+    }
+    printf("finish allocating memory to parent proccess\n");
+
+    int pid = fork();
+
+    if (pid == 0)
+    {
+        printf("starting accessing memory\n");
+        for (int i = 0; i < NUMPAGES; i++)
+        {
+            for (int j = 0; j < ((PAGESIZE / sizeof(int))); j++)
+            {
+                if (*(pages[i] + j) != (i * j))
+                {
+                    printf("test accessing different pages failed %d != %d\n", (pages[i] + j), (i * j)); //suppose to be i*j
+                }
+            }
+        }
+        printf("finished accessing memory\n");
+        printf("finished test well exiting child proccess\n");
+        exit(1);
+    }
+    int status;
+    wait(&status);
+    time = uptime() - time;
+    printf("finished test well father time: %d\n", time);
+    if (status != 1)
+        printf("interesting\n");
+    free_pages(pages);
+}
+
+int main(int argc, char *argv[])
+{
+    test_accessing_different_pages();
+    test_fork();
+    exit(1);
 }

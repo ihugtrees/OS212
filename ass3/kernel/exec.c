@@ -9,22 +9,21 @@
 
 static int loadseg(pde_t *pgdir, uint64 addr, struct inode *ip, uint offset, uint sz);
 
-void exec_backup_pages(struct pagedata backup_pages[], int backup_proc[], int backup_queue[], int backup_occupied[]) {
+void exec_backup_pages(struct pagedata backup_pages[], int backup_proc[], int backup_queue[], int backup_occupied[])
+{
     struct proc *p = myproc();
     int i;
-    for (i = 0; i < MAX_TOTAL_PAGES; i++) {
+    for (i = 0; i < MAX_TOTAL_PAGES; i++)
+    {
         backup_pages[i].is_allocated = p->all_pages[i].is_allocated;
         backup_pages[i].in_RAM = p->all_pages[i].in_RAM;
         backup_pages[i].v_addr = p->all_pages[i].v_addr;
         backup_pages[i].age = p->all_pages[i].age;
         backup_pages[i].file_offset_in_swap = p->all_pages[i].file_offset_in_swap;
-        
-//        p->all_pages[i].is_allocated = 0;
-//        p->all_pages[i].in_RAM = 0;
-//        p->all_pages[i].v_addr = 0;
     }
 
-    for (i = 0; i < MAX_PSYC_PAGES; i++) {
+    for (i = 0; i < MAX_PSYC_PAGES; i++)
+    {
         backup_queue[i] = p->ram_queue[i];
         backup_occupied[i] = p->occupied[i];
     }
@@ -33,23 +32,21 @@ void exec_backup_pages(struct pagedata backup_pages[], int backup_proc[], int ba
     backup_proc[1] = p->ram_pages;
     backup_proc[2] = p->first;
     backup_proc[3] = p->last;
-    
-//    p->aloc_pages = 0;
-//    p->ram_pages = 0;
-//    p->first = -1;
-//    p->last = -1;
     alloc_page_data(p);
 }
 
-void exec_restore_pages(struct pagedata backup_pages[], int backup_proc[], int backup_queue[], int backup_occupied[]) {
+void exec_restore_pages(struct pagedata backup_pages[], int backup_proc[], int backup_queue[], int backup_occupied[])
+{
     struct proc *p = myproc();
     int i;
-    for (i = 0; i < MAX_TOTAL_PAGES; i++) {
+    for (i = 0; i < MAX_TOTAL_PAGES; i++)
+    {
         p->all_pages[i].is_allocated = backup_pages[i].is_allocated;
         p->all_pages[i].in_RAM = backup_pages[i].in_RAM;
         p->all_pages[i].v_addr = backup_pages[i].v_addr;
     }
-    for (i = 0; i < MAX_PSYC_PAGES; ++i) {
+    for (i = 0; i < MAX_PSYC_PAGES; ++i)
+    {
         p->ram_queue[i] = backup_queue[i];
         p->occupied[i] = backup_occupied[i];
     }
@@ -59,7 +56,8 @@ void exec_restore_pages(struct pagedata backup_pages[], int backup_proc[], int b
     p->last = backup_proc[3];
 }
 
-int exec(char *path, char **argv) {
+int exec(char *path, char **argv)
+{
     char *s, *last;
     int i, off;
     uint64 argc, sz = 0, sp, ustack[MAXARG + 1], stackbase;
@@ -76,18 +74,20 @@ int exec(char *path, char **argv) {
     int backup_queue[MAX_PSYC_PAGES];
     int backup_proc[4];
     int backup_occupied[MAX_PSYC_PAGES];
-    if (selection != NONE && p->pid > 2) {
+    if (selection != NONE && p->pid > 2)
+    {
         exec_backup_pages(backup_pages, backup_proc, backup_queue, backup_occupied);
     }
 
-    if ((ip = namei(path)) == 0) {
+    if ((ip = namei(path)) == 0)
+    {
         end_op();
         return -1;
     }
     ilock(ip);
 
     // Check ELF header
-    if (readi(ip, 0, (uint64) &elf, 0, sizeof(elf)) != sizeof(elf))
+    if (readi(ip, 0, (uint64)&elf, 0, sizeof(elf)) != sizeof(elf))
         goto bad;
     if (elf.magic != ELF_MAGIC)
         goto bad;
@@ -96,8 +96,9 @@ int exec(char *path, char **argv) {
         goto bad;
 
     // Load program into memory.
-    for (i = 0, off = elf.phoff; i < elf.phnum; i++, off += sizeof(ph)) {
-        if (readi(ip, 0, (uint64) &ph, off, sizeof(ph)) != sizeof(ph))
+    for (i = 0, off = elf.phoff; i < elf.phnum; i++, off += sizeof(ph))
+    {
+        if (readi(ip, 0, (uint64)&ph, off, sizeof(ph)) != sizeof(ph))
             goto bad;
         if (ph.type != ELF_PROG_LOAD)
             continue;
@@ -133,7 +134,8 @@ int exec(char *path, char **argv) {
     stackbase = sp - PGSIZE;
 
     // Push argument strings, prepare rest of stack in ustack.
-    for (argc = 0; argv[argc]; argc++) {
+    for (argc = 0; argv[argc]; argc++)
+    {
         if (argc >= MAXARG)
             goto bad;
         sp -= strlen(argv[argc]) + 1;
@@ -151,7 +153,7 @@ int exec(char *path, char **argv) {
     sp -= sp % 16;
     if (sp < stackbase)
         goto bad;
-    if (copyout(pagetable, sp, (char *) ustack, (argc + 1) * sizeof(uint64)) < 0)
+    if (copyout(pagetable, sp, (char *)ustack, (argc + 1) * sizeof(uint64)) < 0)
         goto bad;
 
     // arguments to user main(argc, argv)
@@ -173,20 +175,23 @@ int exec(char *path, char **argv) {
     p->trapframe->sp = sp;         // initial stack pointer
     proc_freepagetable(oldpagetable, oldsz);
 
-    if (selection != NONE && p->pid > 2) {
+    if (selection != NONE && p->pid > 2)
+    {
         removeSwapFile(p);
         createSwapFile(p);
     }
     return argc; // this ends up in a0, the first argument to main(argc, argv)
 
-    bad:
-    if (selection != NONE && p->pid > 2) {
+bad:
+    if (selection != NONE && p->pid > 2)
+    {
         exec_restore_pages(backup_pages, backup_proc, backup_queue, backup_occupied);
     }
 
     if (pagetable)
         proc_freepagetable(pagetable, sz);
-    if (ip) {
+    if (ip)
+    {
         iunlockput(ip);
         end_op();
     }
@@ -198,14 +203,16 @@ int exec(char *path, char **argv) {
 // and the pages from va to va+sz must already be mapped.
 // Returns 0 on success, -1 on failure.
 static int
-loadseg(pagetable_t pagetable, uint64 va, struct inode *ip, uint offset, uint sz) {
+loadseg(pagetable_t pagetable, uint64 va, struct inode *ip, uint offset, uint sz)
+{
     uint i, n;
     uint64 pa;
 
     if ((va % PGSIZE) != 0)
         panic("loadseg: va must be page aligned");
 
-    for (i = 0; i < sz; i += PGSIZE) {
+    for (i = 0; i < sz; i += PGSIZE)
+    {
         pa = walkaddr(pagetable, va + i);
         if (pa == 0)
             panic("loadseg: address should exist");
@@ -213,7 +220,7 @@ loadseg(pagetable_t pagetable, uint64 va, struct inode *ip, uint offset, uint sz
             n = sz - i;
         else
             n = PGSIZE;
-        if (readi(ip, 0, (uint64) pa, offset + i, n) != n)
+        if (readi(ip, 0, (uint64)pa, offset + i, n) != n)
             return -1;
     }
 
