@@ -83,10 +83,20 @@ void fork_test(int num)
         {
             printf(".");
             if (buffers[i][0] != i)
-            {
-                printf("fork_test failed (%d != %d)...\n", buffers[i][0], i);
-                exit(0);
-            }
+                {
+                    printf("va fail :%p    %d : %d\n", &buffers[i][0],buffers[i][0], i);
+                    printf("fork_test failed (%d != %d)...\n", buffers[i][0], i);
+                    //exit(0);
+                }
+                else{
+                    printf("va okay :%p    %d : %d\n", &buffers[i][0],buffers[i][0], i);
+                }
+            
+            // if (buffers[i][0] != i)
+            // {
+            //     printf("fork_test failed (%d != %d)...\n", buffers[i][0], i);
+            //     exit(0);
+            // }
         }
 
         printf("\n  fork_test_%d ok...\n", num);
@@ -147,11 +157,16 @@ void policy_test()
             int index = order[i];
             for (int j = 0; j < 50; j++)
             {
+                
                 if (buffers[index][j] != index * j)
                 {
+                    // printf("va fail :%p    %d : %d\n", &buffers[index][j],buffers[index][j], index*j);
                     printf("policy_test failed...");
                     exit(0);
                 }
+                // else{
+                //     printf("va okay :%p    %d : %d\n", &buffers[index][j],buffers[index][j], index*j);
+                // }
             }
         }
     }

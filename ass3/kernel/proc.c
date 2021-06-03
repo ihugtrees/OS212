@@ -107,13 +107,14 @@ void alloc_page_data(struct proc *p)
     p->first = -1;
     p->last = -1;
     p->swapFile = 0;
+    p->in_file = 0;
 
     for (int i = 0; i < MAX_TOTAL_PAGES; i++)
     {
         p->all_pages[i].is_allocated = 0;
         p->all_pages[i].v_addr = -1;
         p->all_pages[i].in_RAM = 0;
-        p->all_pages[i].file_offset = -1;
+        // p->all_pages[i].file_offset = -1;
 
         if (SELECTION == LAPA)
         {
@@ -128,7 +129,7 @@ void alloc_page_data(struct proc *p)
     for (int i = 0; i < MAX_PSYC_PAGES; i++)
     {
         p->ram_queue[i] = -1;
-        p->file_offsets[i] = -1;
+        p->occupied[i] = 0;
     }
 }
 
@@ -374,29 +375,39 @@ int fork(void)
         np->ram_pages = p->ram_pages;
         np->first = p->first;
         np->last = p->last;
+        //np->all_pages[i].file_offset_in_swap = p->all_pages[i].file_offset_in_swap;
 
         int i;
         char *temp = kalloc();
-        memset(temp, 0, PGSIZE);
+        // memset(temp, 0, PGSIZE);
+        int offset = 0;
+
+        np->in_file = p->in_file;
         for (i = 0; i < MAX_TOTAL_PAGES; i++)
         {
             np->all_pages[i].is_allocated = p->all_pages[i].is_allocated;
             np->all_pages[i].in_RAM = p->all_pages[i].in_RAM;
             np->all_pages[i].v_addr = p->all_pages[i].v_addr;
             np->all_pages[i].age = p->all_pages[i].age;
-            np->all_pages[i].file_offset = p->all_pages[i].file_offset;
+            //np->all_pages[i].file_offset_in_swap = p->all_pages[i].file_offset_in_swap;
             if (np->all_pages[i].is_allocated && np->all_pages[i].in_RAM == 0)
             {
+
+                np->all_pages[i].file_offset_in_swap = offset;
+                np->occupied[offset] = 1;
+                printf("off set in swap %d  va %p\n", np->all_pages[i].file_offset_in_swap, np->all_pages[i].v_addr);
                 release(&np->lock);
-                readFromSwapFile(p, temp, p->all_pages[i].file_offset * PGSIZE, PGSIZE);
-                writeToSwapFile(np, temp, np->all_pages[i].file_offset * PGSIZE, PGSIZE);
+                readFromSwapFile(p, temp, p->all_pages[i].file_offset_in_swap * PGSIZE, PGSIZE);
+                writeToSwapFile(np, temp, np->all_pages[i].file_offset_in_swap * PGSIZE, PGSIZE);
                 acquire(&np->lock);
+                offset++;
+                // printf("inhere%d", i);
             }
         }
         for (i = 0; i < MAX_PSYC_PAGES; i++)
         {
             np->ram_queue[i] = p->ram_queue[i];
-            np->file_offsets[i] = p->file_offsets[i];
+            // np->file_offsets[i] = p->file_offsets[i];
         }
 
         kfree(temp);

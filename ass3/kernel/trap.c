@@ -46,15 +46,16 @@ void usertrap(void) {
 
     int selection = SELECTION;
 
-    if (selection != NONE) {
+    if((selection == NFUA || selection == LAPA || selection == SCFIFO) && (r_scause() == 13 || r_scause() == 15)){
         if (r_scause() == 13 || r_scause() == 15) {
             uint64 va = PGROUNDDOWN(r_stval());
-            printf("\ntrap va = %d\n", va);
+            // printf("\ntrap va = %p\n", va);
             pte_t *pte = walk(p->pagetable, va, 0);
-//            printf("*pte = %d\n", *pte);
+        //    printf("*pte = %x\n", va);
             if (*pte & PTE_PG) {
                 for (int i = 0; i < MAX_TOTAL_PAGES; i++) {
                     if (va == p->all_pages[i].v_addr) {
+                        // printf("inhere!");
                         page_to_RAM(i);
                         break;
                     }
@@ -65,7 +66,7 @@ void usertrap(void) {
         }
     }
 
-    if (r_scause() == 8) {
+    else if (r_scause() == 8) {
         // system call
 
         if (p->killed)
