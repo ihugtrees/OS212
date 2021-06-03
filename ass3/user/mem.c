@@ -84,19 +84,19 @@ void fork_test(int num)
             printf(".");
             if (buffers[i][0] != i)
                 {
-                    // printf("va fail :%p    %d : %d\n", &buffers[i][0],buffers[i][0], i);
+                    printf("va fail :%p    %d : %d\n", &buffers[i][0],buffers[i][0], i);
                     printf("fork_test failed (%d != %d)...\n", buffers[i][0], i);
                     exit(0);
                 }
-                // else{
-                //     printf("va okay :%p    %d : %d\n", &buffers[i][0],buffers[i][0], i);
-                // }
+                else{
+                    // printf("va okay :%p    %d : %d\n", &buffers[i][0],buffers[i][0], i);
+                }
             
-            // if (buffers[i][0] != i)
-            // {
-            //     printf("fork_test failed (%d != %d)...\n", buffers[i][0], i);
-            //     exit(0);
-            // }
+            if (buffers[i][0] != i)
+            {
+                printf("fork_test failed (%d != %d)...\n", buffers[i][0], i);
+                exit(0);
+            }
         }
 
         printf("\n  fork_test_%d ok...\n", num);

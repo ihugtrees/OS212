@@ -326,11 +326,13 @@ void uvmunmap(pagetable_t pagetable, uint64 va, uint64 npages, int do_free)
             panic("uvmunmap: walk");
         if ((*pte & PTE_V) == 0)
         {
-            if (SELECTION != NONE && myproc()->pid > 2)
+            if (SELECTION != NONE)
             {
                 if ((*pte & PTE_PG) == 0)
                     panic("uvmunmap: page not present1");
-            } else {
+            }
+            else
+            {
                 panic("uvmunmap: page not present");
             }
         }
@@ -421,8 +423,6 @@ uvmalloc(pagetable_t pagetable, uint64 oldsz, uint64 newsz)
         {
             old_oldsz += PGSIZE;
             alloc_page(a);
-            //             pte_t *pte = walk(pagetable, a, 0);
-            //             *pte = PTE_V | (*pte);
         }
     }
     return newsz;
@@ -496,8 +496,10 @@ int uvmcopy(pagetable_t old, pagetable_t new, uint64 sz)
     {
         if ((pte = walk(old, i, 0)) == 0)
             panic("uvmcopy: pte should exist");
-        if ((*pte & PTE_V) == 0) {
-            if (SELECTION != NONE && myproc()->pid > 2) {
+        if ((*pte & PTE_V) == 0)
+        {
+            if (SELECTION != NONE && myproc()->pid > 2)
+            {
                 if ((*pte & PTE_PG) == 0)
                     panic("uvmcopy: page not present");
             }
