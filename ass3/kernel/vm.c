@@ -222,6 +222,9 @@ void remove_page(uint64 va) {
             }
             p->all_pages[i].in_RAM = 0;
             p->aloc_pages--;
+            p->file_offsets[p->all_pages[i].file_offset] = -1;
+            p->all_pages[i].file_offset = -1;
+
             if (SELECTION == LAPA) {
                 p->all_pages[i].age = 0xffffffff;
             } else {
@@ -264,7 +267,7 @@ void uvmunmap(pagetable_t pagetable, uint64 va, uint64 npages, int do_free) {
         if ((pte = walk(pagetable, a, 0)) == 0)
             panic("uvmunmap: walk");
         if ((*pte & PTE_V) == 0) {
-            if (SELECTION != NONE) {
+            if (SELECTION != NONE  && myproc()->pid > 2) {
                 if ((*pte & PTE_PG) == 0)
                     panic("uvmunmap: page not present");
             } else {
@@ -277,7 +280,7 @@ void uvmunmap(pagetable_t pagetable, uint64 va, uint64 npages, int do_free) {
             uint64 pa = PTE2PA(*pte);
             kfree((void *) pa);
         }
-        if (SELECTION != NONE) {
+        if (SELECTION != NONE && myproc()->pid > 2) {
             remove_page(a);
         }
         *pte = 0;
@@ -324,7 +327,7 @@ uvmalloc(pagetable_t pagetable, uint64 oldsz, uint64 newsz) {
     oldsz = PGROUNDUP(oldsz);
     for (a = oldsz; a < newsz; a += PGSIZE) {
 //        printf("procid: %d\n", p->pid);
-        if (SELECTION != NONE && myproc()->pid > 2) {
+        if (SELECTION != NONE && p->pid > 2  && a >= oldsz+PGSIZE) {
             if (p->aloc_pages >= MAX_TOTAL_PAGES) {
                 panic("exceeded maximum total pages");
             }
@@ -344,7 +347,7 @@ uvmalloc(pagetable_t pagetable, uint64 oldsz, uint64 newsz) {
             return 0;
         }
 
-        if (SELECTION != NONE && myproc()->pid > 2) {
+        if (SELECTION != NONE && p->pid > 2  && a >= oldsz+PGSIZE) {
             alloc_page(a);
 //             pte_t *pte = walk(pagetable, a, 0);
 //             *pte = PTE_V | (*pte);
