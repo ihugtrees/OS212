@@ -268,6 +268,7 @@ void remove_page(uint64 va)
                 p->ram_pages--;
 
                 p->all_pages[i].in_RAM = 0;
+                p->all_pages[i].file_offset_in_swap = -1;
                 p->aloc_pages--;
                 if (SELECTION == LAPA)
                 {
@@ -328,10 +329,8 @@ void uvmunmap(pagetable_t pagetable, uint64 va, uint64 npages, int do_free)
             if (SELECTION != NONE && myproc()->pid > 2)
             {
                 if ((*pte & PTE_PG) == 0)
-                    panic("uvmunmap: page not present");
-            }
-            else
-            {
+                    panic("uvmunmap: page not present1");
+            } else {
                 panic("uvmunmap: page not present");
             }
         }
@@ -497,10 +496,8 @@ int uvmcopy(pagetable_t old, pagetable_t new, uint64 sz)
     {
         if ((pte = walk(old, i, 0)) == 0)
             panic("uvmcopy: pte should exist");
-        if ((*pte & PTE_V) == 0)
-        {
-            if (SELECTION != NONE)
-            {
+        if ((*pte & PTE_V) == 0) {
+            if (SELECTION != NONE && myproc()->pid > 2) {
                 if ((*pte & PTE_PG) == 0)
                     panic("uvmcopy: page not present");
             }
